@@ -1,5 +1,9 @@
 # The Bundle Programming Language
 
+![zig version](https://img.shields.io/badge/zig-0.9.1_2022--02--14-orange)
+![issues](https://img.shields.io/github/issues/bundle-lang/bundle)
+![pull requests](https://img.shields.io/github/issues-pr/bundle-lang/bundle)
+
 An imperative, statically typed, general-purpose programming language intended to be safe yet simple.
 
 **Note:** the language is under heavy development.
