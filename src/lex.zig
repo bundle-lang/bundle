@@ -23,10 +23,13 @@ pub const Token = struct {
 
         // literals
         literal_integer,
+        literal_true,
+        literal_false,
 
         // types
         type_u32,
         type_i32,
+        type_bool,
 
         // operators
         equal,
@@ -58,9 +61,12 @@ pub const Token = struct {
                 .keyword_let => "let",
 
                 .literal_integer => "Integer",
+                .literal_true => "true",
+                .literal_false => "false",
 
                 .type_u32 => "u32",
                 .type_i32 => "i32",
+                .type_bool => "bool",
 
                 .equal => "=",
                 .plus => "+",
@@ -87,8 +93,12 @@ pub const Token = struct {
         .{ "else", .keyword_else },
         .{ "let", .keyword_let },
 
+        .{ "true", .literal_true },
+        .{ "false", .literal_false },
+
         .{ "u32", .type_u32 },
         .{ "i32", .type_i32 },
+        .{ "bool", .type_bool },
     });
 
     fn keyword(literal: []const u8) ?Kind {

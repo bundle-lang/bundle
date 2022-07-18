@@ -7,6 +7,7 @@ pub const NodeKind = union(enum) {
     fn_decl: NodeFn,
     let_decl: NodeLet,
     if_stmt: NodeIf,
+    elif_stmt: NodeElif,
     return_stmt: NodeReturn,
     arg: NodeArg,
     literal_expr: NodeLiteral,
@@ -16,6 +17,7 @@ pub const NodeKind = union(enum) {
 pub const Type = enum {
     type_u32,
     type_i32,
+    type_bool,
 };
 
 pub const Operator = enum {
@@ -28,6 +30,7 @@ pub const Operator = enum {
 pub const NodeLiteral = union(enum) {
     identifier: []const u8,
     integer: u32,
+    boolean: bool,
 };
 
 pub const NodeFn = struct {
@@ -48,6 +51,11 @@ pub const NodeIf = struct {
     if_body: NodeArray,
     elif_nodes: ?NodeArray,
     else_body: ?NodeArray,
+};
+
+pub const NodeElif = struct {
+    elif_condition: *NodeKind,
+    elif_body: NodeArray,
 };
 
 pub const NodeReturn = struct {

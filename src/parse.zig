@@ -53,6 +53,8 @@ pub const Parser = struct {
         const next = self.lexer.nextToken();
         return switch (next.kind) {
             .literal_integer => .{ .literal_expr = .{ .integer = fmt.parseUnsigned(u32, next.literal, 0) catch unreachable } },
+            .literal_true => .{ .literal_expr = .{ .boolean = true } },
+            .literal_false => .{ .literal_expr = .{ .boolean = false } },
             .identifier => .{ .literal_expr = .{ .identifier = next.literal } },
             else => self.propagateCustomError("Literal", next),
         };
@@ -63,6 +65,7 @@ pub const Parser = struct {
         return switch (next.kind) {
             .type_u32 => .type_u32,
             .type_i32 => .type_i32,
+            .type_bool => .type_bool,
             else => self.propagateCustomError("Type", next),
         };
     }
@@ -163,7 +166,12 @@ pub const Parser = struct {
 
         while (self.lexer.peekTokenIs(.keyword_elif)) {
             _ = self.lexer.nextToken();
-            elif_nodes.?.append(try self.parseIf()) catch |err| return self.propagateUnrecoverableError(err);
+
+            const elif_condition = try self.parseExpression();
+            const elif_body = try self.parseBody();
+
+            elif_nodes.?.append(ast.NodeKind{ .elif_stmt = .{ .elif_condition = elif_condition, .elif_body = elif_body } }) catch |err|
+                return self.propagateUnrecoverableError(err);
         }
 
         var else_body: ?ast.NodeArray = null;
