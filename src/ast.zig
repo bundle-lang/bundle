@@ -10,7 +10,7 @@ pub const NodeKind = union(enum) {
     elif_stmt: NodeElif,
     return_stmt: NodeReturn,
     arg: NodeArg,
-    literal_expr: NodeLiteral,
+    basic_expr: NodeBasicExpr,
     binary_expr: NodeBinaryExpr,
 };
 
@@ -27,7 +27,7 @@ pub const Operator = enum {
     slash,
 };
 
-pub const NodeLiteral = union(enum) {
+pub const NodeBasicExpr = union(enum) {
     identifier: []const u8,
     integer: u32,
     boolean: bool,

@@ -49,17 +49,6 @@ pub const Parser = struct {
         };
     }
 
-    fn readLiteral(self: *Parser) ParseError!ast.NodeKind {
-        const next = self.lexer.nextToken();
-        return switch (next.kind) {
-            .literal_integer => .{ .literal_expr = .{ .integer = fmt.parseUnsigned(u32, next.literal, 0) catch unreachable } },
-            .literal_true => .{ .literal_expr = .{ .boolean = true } },
-            .literal_false => .{ .literal_expr = .{ .boolean = false } },
-            .identifier => .{ .literal_expr = .{ .identifier = next.literal } },
-            else => self.propagateCustomError("Literal", next),
-        };
-    }
-
     fn readType(self: *Parser) ParseError!ast.Type {
         const next = self.lexer.nextToken();
         return switch (next.kind) {
@@ -70,10 +59,21 @@ pub const Parser = struct {
         };
     }
 
+    fn parseBasicExpr(self: *Parser) ParseError!ast.NodeKind {
+        const next = self.lexer.nextToken();
+        return switch (next.kind) {
+            .literal_integer => .{ .basic_expr = .{ .integer = fmt.parseUnsigned(u32, next.literal, 0) catch unreachable } },
+            .literal_true => .{ .basic_expr = .{ .boolean = true } },
+            .literal_false => .{ .basic_expr = .{ .boolean = false } },
+            .identifier => .{ .basic_expr = .{ .identifier = next.literal } },
+            else => self.propagateCustomError("Expression", next),
+        };
+    }
+
     fn parseExpressionC(self: *Parser) ParseError!*ast.NodeKind {
         var primary = self.allocator.create(ast.NodeKind) catch |err|
             return self.propagateUnrecoverableError(err);
-        primary.* = try self.readLiteral();
+        primary.* = try self.parseBasicExpr();
         return primary;
     }
 
