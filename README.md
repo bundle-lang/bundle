@@ -29,7 +29,7 @@ The binary will be located in the `zig-out/bin/` directory.
 
 ## Contributing
 
-If you wish to contribute, we recommend reading the [grammar](grammar), as the examples may introduce doubts when programming some aspects of the implementation.
+If you wish to contribute, we recommend reading the [grammar](grammar), as the [samples](samples/) may introduce doubts when programming some aspects of the implementation.
 
 In addition, it may be useful to follow a commit message format, such as `directory or root file: changes`. If several directories or files have been changed, use the name `meta`.
 
