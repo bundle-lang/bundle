@@ -59,13 +59,18 @@ pub const Parser = struct {
         };
     }
 
-    fn parseBasicExpr(self: *Parser) ParseError!ast.NodeKind {
+    fn parsePrimaryExpr(self: *Parser) ParseError!ast.NodeKind {
         const next = self.lexer.nextToken();
         return switch (next.kind) {
-            .literal_integer => .{ .basic_expr = .{ .integer = fmt.parseUnsigned(u32, next.literal, 0) catch unreachable } },
-            .literal_true => .{ .basic_expr = .{ .boolean = true } },
-            .literal_false => .{ .basic_expr = .{ .boolean = false } },
-            .identifier => .{ .basic_expr = .{ .identifier = next.literal } },
+            .literal_integer => .{ .primary_expr = .{ .integer = fmt.parseUnsigned(u32, next.literal, 0) catch unreachable } },
+            .literal_true => .{ .primary_expr = .{ .boolean = true } },
+            .literal_false => .{ .primary_expr = .{ .boolean = false } },
+            .identifier => .{ .primary_expr = .{ .identifier = next.literal } },
+            .open_paren => grouping: {
+                const expr = try self.parseExpression();
+                try self.expectAndSkip(.close_paren);
+                break :grouping .{ .primary_expr = .{ .grouping = expr } };
+            },
             else => self.propagateCustomError("Expression", next),
         };
     }
@@ -73,7 +78,7 @@ pub const Parser = struct {
     fn parseExpressionC(self: *Parser) ParseError!*ast.NodeKind {
         var primary = self.allocator.create(ast.NodeKind) catch |err|
             return self.propagateUnrecoverableError(err);
-        primary.* = try self.parseBasicExpr();
+        primary.* = try self.parsePrimaryExpr();
         return primary;
     }
 
