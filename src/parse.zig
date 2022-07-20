@@ -155,7 +155,7 @@ pub const Parser = struct {
 
         const value = try self.parseExpression();
 
-        return ast.NodeKind{ .let_decl = .{ .name = name, .let_type = let_type, .value = value } };
+        return ast.NodeKind{ .var_decl = .{ .name = name, .let_type = let_type, .value = value } };
     }
 
     fn parseIf(self: *Parser) ParseError!ast.NodeKind {

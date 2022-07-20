@@ -4,11 +4,11 @@ const lex = @import("lex.zig");
 pub const NodeArray = std.ArrayList(NodeKind);
 
 pub const NodeKind = union(enum) {
-    fn_decl: NodeFn,
-    let_decl: NodeLet,
-    if_stmt: NodeIf,
-    elif_stmt: NodeElif,
-    return_stmt: NodeReturn,
+    fn_decl: NodeFnDecl,
+    var_decl: NodeVarDecl,
+    if_stmt: NodeIfStmt,
+    elif_stmt: NodeElifStmt,
+    return_stmt: NodeReturnStmt,
     arg: NodeArg,
     basic_expr: NodeBasicExpr,
     binary_expr: NodeBinaryExpr,
@@ -33,32 +33,32 @@ pub const NodeBasicExpr = union(enum) {
     boolean: bool,
 };
 
-pub const NodeFn = struct {
+pub const NodeFnDecl = struct {
     name: []const u8,
     args: NodeArray,
     fn_type: Type,
     body: NodeArray,
 };
 
-pub const NodeLet = struct {
+pub const NodeVarDecl = struct {
     name: []const u8,
     let_type: Type,
     value: *NodeKind,
 };
 
-pub const NodeIf = struct {
+pub const NodeIfStmt = struct {
     if_condition: *NodeKind,
     if_body: NodeArray,
     elif_nodes: ?NodeArray,
     else_body: ?NodeArray,
 };
 
-pub const NodeElif = struct {
+pub const NodeElifStmt = struct {
     elif_condition: *NodeKind,
     elif_body: NodeArray,
 };
 
-pub const NodeReturn = struct {
+pub const NodeReturnStmt = struct {
     value: *NodeKind,
 };
 
