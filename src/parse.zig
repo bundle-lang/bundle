@@ -49,17 +49,6 @@ pub const Parser = struct {
         };
     }
 
-    fn readLiteral(self: *Parser) ParseError!ast.NodeKind {
-        const next = self.lexer.nextToken();
-        return switch (next.kind) {
-            .literal_integer => .{ .literal_expr = .{ .integer = fmt.parseUnsigned(u32, next.literal, 0) catch unreachable } },
-            .literal_true => .{ .literal_expr = .{ .boolean = true } },
-            .literal_false => .{ .literal_expr = .{ .boolean = false } },
-            .identifier => .{ .literal_expr = .{ .identifier = next.literal } },
-            else => self.propagateCustomError("Literal", next),
-        };
-    }
-
     fn readType(self: *Parser) ParseError!ast.Type {
         const next = self.lexer.nextToken();
         return switch (next.kind) {
@@ -70,10 +59,26 @@ pub const Parser = struct {
         };
     }
 
+    fn parsePrimaryExpr(self: *Parser) ParseError!ast.NodeKind {
+        const next = self.lexer.nextToken();
+        return switch (next.kind) {
+            .literal_integer => .{ .primary_expr = .{ .integer = fmt.parseUnsigned(u32, next.literal, 0) catch unreachable } },
+            .literal_true => .{ .primary_expr = .{ .boolean = true } },
+            .literal_false => .{ .primary_expr = .{ .boolean = false } },
+            .identifier => .{ .primary_expr = .{ .identifier = next.literal } },
+            .open_paren => grouping: {
+                const expr = try self.parseExpression();
+                try self.expectAndSkip(.close_paren);
+                break :grouping .{ .primary_expr = .{ .grouping = expr } };
+            },
+            else => self.propagateCustomError("Expression", next),
+        };
+    }
+
     fn parseExpressionC(self: *Parser) ParseError!*ast.NodeKind {
         var primary = self.allocator.create(ast.NodeKind) catch |err|
             return self.propagateUnrecoverableError(err);
-        primary.* = try self.readLiteral();
+        primary.* = try self.parsePrimaryExpr();
         return primary;
     }
 
@@ -155,7 +160,7 @@ pub const Parser = struct {
 
         const value = try self.parseExpression();
 
-        return ast.NodeKind{ .let_decl = .{ .name = name, .let_type = let_type, .value = value } };
+        return ast.NodeKind{ .var_decl = .{ .name = name, .let_type = let_type, .value = value } };
     }
 
     fn parseIf(self: *Parser) ParseError!ast.NodeKind {
