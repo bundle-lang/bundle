@@ -114,7 +114,9 @@ pub const Lexer = struct {
     column: u32,
 
     fn nextChar(self: *Lexer) void {
-        if (self.pos < self.src.len) {
+        if (self.src.len == 0) {
+            return;
+        } else if (self.pos < self.src.len) {
             if (self.curChar() == '\n') {
                 self.line += 1;
                 self.column = 1;
@@ -235,4 +237,81 @@ pub fn new(unit: []const u8, src: []const u8) Lexer {
         .line = 1,
         .column = 1,
     };
+}
+
+test "lexer: proper initial values" {
+    var lexer = new("", "");
+
+    try std.testing.expectEqual(@as(u32, 0), lexer.pos);
+    try std.testing.expectEqual(@as(u32, 1), lexer.line);
+    try std.testing.expectEqual(@as(u32, 1), lexer.column);
+}
+
+test "curChar: empty input" {
+    var lexer = new("test", "");
+
+    try std.testing.expectEqual(@as(u32, 0), lexer.pos);
+    lexer.nextChar();
+    try std.testing.expectEqual(@as(u32, 0), lexer.pos);
+}
+
+test "peekTokenIs: single token" {
+    var lexer = new("test", "a");
+
+    try std.testing.expect(lexer.peekTokenIs(.identifier));
+}
+
+test "peekTokenIs: eof" {
+    var lexer = new("test", "");
+
+    try std.testing.expect(lexer.peekTokenIs(.eof));
+}
+
+test "nextToken: eof on empty input" {
+    var lexer = new("test", "");
+
+    try std.testing.expect(lexer.nextToken().kind == .eof);
+}
+
+test "nextToken: eof after last token" {
+    var lexer = new("test", "a");
+
+    try std.testing.expect(lexer.nextToken().kind == .identifier);
+    try std.testing.expect(lexer.nextToken().kind == .eof);
+}
+
+test "nextToken: eof after eof" {
+    var lexer = new("test", "");
+
+    try std.testing.expect(lexer.nextToken().kind == .eof);
+    try std.testing.expect(lexer.nextToken().kind == .eof);
+}
+
+test "nextToken: lex identifier" {
+    var lexer = new("test", "foo");
+
+    try std.testing.expect(lexer.nextToken().kind == .identifier);
+}
+
+test "nextToken: lex symbol" {
+    var lexer = new("test", "=");
+
+    try std.testing.expect(lexer.nextToken().kind == .equal);
+}
+
+test "nextToken: lex unknown" {
+    var lexer = new("test", "?");
+
+    try std.testing.expect(lexer.nextToken().kind == .unknown);
+}
+
+test "nextToken: lex packed" {
+    var lexer = new("test", "id+true?bool");
+
+    try std.testing.expect(lexer.nextToken().kind == .identifier);
+    try std.testing.expect(lexer.nextToken().kind == .plus);
+    try std.testing.expect(lexer.nextToken().kind == .literal_true);
+    try std.testing.expect(lexer.nextToken().kind == .unknown);
+    try std.testing.expect(lexer.nextToken().kind == .type_bool);
+    try std.testing.expect(lexer.nextToken().kind == .eof);
 }
