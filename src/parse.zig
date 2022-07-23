@@ -59,9 +59,12 @@ pub const Parser = struct {
         };
     }
 
-    fn parsePrimaryExpr(self: *Parser) ParseError!ast.NodeKind {
+    fn parsePrimaryExpr(self: *Parser) ParseError!*ast.NodeKind {
+        var primary = self.allocator.create(ast.NodeKind) catch |err|
+            return self.propagateUnrecoverableError(err);
+
         const next = self.lexer.nextToken();
-        return switch (next.kind) {
+        primary.* = switch (next.kind) {
             .literal_integer => .{ .primary_expr = .{ .integer = fmt.parseUnsigned(u32, next.literal, 0) catch unreachable } },
             .literal_true => .{ .primary_expr = .{ .boolean = true } },
             .literal_false => .{ .primary_expr = .{ .boolean = false } },
@@ -71,15 +74,34 @@ pub const Parser = struct {
                 try self.expectAndSkip(.close_paren);
                 break :grouping .{ .primary_expr = .{ .grouping = expr } };
             },
-            else => self.propagateCustomError("Expression", next),
+            else => return self.propagateCustomError("Expression", next),
         };
+
+        return primary;
+    }
+
+    fn parseUnaryExpr(self: *Parser) ParseError!*ast.NodeKind {
+        var unary = self.allocator.create(ast.NodeKind) catch |err|
+            return self.propagateUnrecoverableError(err);
+
+        const next = self.lexer.nextToken();
+        const operator = try switch (next.kind) {
+            .plus => ast.Operator.plus,
+            .minus => ast.Operator.minus,
+            else => self.propagateCustomError("Unary Operator", next),
+        };
+        const expr = try self.parsePrimaryExpr();
+        unary.* = .{ .unary_expr = .{ .operator = operator, .expr = expr } };
+
+        return unary;
     }
 
     fn parseExpressionC(self: *Parser) ParseError!*ast.NodeKind {
-        var primary = self.allocator.create(ast.NodeKind) catch |err|
-            return self.propagateUnrecoverableError(err);
-        primary.* = try self.parsePrimaryExpr();
-        return primary;
+        if (self.lexer.peekTokenIs(.plus) or self.lexer.peekTokenIs(.minus)) {
+            return try self.parseUnaryExpr();
+        } else {
+            return try self.parsePrimaryExpr();
+        }
     }
 
     fn parseExpressionB(self: *Parser) ParseError!*ast.NodeKind {
