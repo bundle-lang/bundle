@@ -11,6 +11,7 @@ pub const NodeKind = union(enum) {
     return_stmt: NodeReturnStmt,
     arg: NodeArg,
     primary_expr: NodePrimaryExpr,
+    unary_expr: NodeUnaryExpr,
     binary_expr: NodeBinaryExpr,
 };
 
@@ -66,6 +67,11 @@ pub const NodeReturnStmt = struct {
 pub const NodeArg = struct {
     name: []const u8,
     arg_type: Type,
+};
+
+pub const NodeUnaryExpr = struct {
+    operator: Operator,
+    expr: *NodeKind,
 };
 
 pub const NodeBinaryExpr = struct {
