@@ -59,6 +59,26 @@ pub const Parser = struct {
         };
     }
 
+    fn readOperator(self: *Parser) ParseError!ast.Operator {
+        const next = self.lexer.nextToken();
+        return switch (next.kind) {
+            .plus => ast.Operator.plus,
+            .minus => ast.Operator.minus,
+            .star => ast.Operator.star,
+            .slash => ast.Operator.slash,
+            else => self.propagateCustomError("Operator", next),
+        };
+    }
+
+    fn readUnaryOperator(self: *Parser) ParseError!ast.Operator {
+        const next = self.lexer.nextToken();
+        return switch (next.kind) {
+            .plus => ast.Operator.plus,
+            .minus => ast.Operator.minus,
+            else => self.propagateCustomError("Unary Operator", next),
+        };
+    }
+
     fn parsePrimaryExpr(self: *Parser) ParseError!*ast.NodeKind {
         var primary = self.allocator.create(ast.NodeKind) catch |err|
             return self.propagateUnrecoverableError(err);
@@ -84,12 +104,7 @@ pub const Parser = struct {
         var unary = self.allocator.create(ast.NodeKind) catch |err|
             return self.propagateUnrecoverableError(err);
 
-        const next = self.lexer.nextToken();
-        const operator = try switch (next.kind) {
-            .plus => ast.Operator.plus,
-            .minus => ast.Operator.minus,
-            else => self.propagateCustomError("Unary Operator", next),
-        };
+        const operator = try self.readUnaryOperator();
         const expr = try self.parsePrimaryExpr();
         unary.* = .{ .unary_expr = .{ .operator = operator, .expr = expr } };
 
@@ -108,11 +123,7 @@ pub const Parser = struct {
         var expression1 = try self.parseExpressionC();
 
         while (self.lexer.peekTokenIs(.star) or self.lexer.peekTokenIs(.slash)) {
-            const operator = switch (self.lexer.nextToken().kind) {
-                .star => ast.Operator.star,
-                .slash => ast.Operator.slash,
-                else => unreachable,
-            };
+            const operator = try self.readOperator();
             const expression2 = try self.parseExpressionC();
 
             var expression3 = self.allocator.create(ast.NodeKind) catch |err|
@@ -128,11 +139,7 @@ pub const Parser = struct {
         var expression1 = try self.parseExpressionB();
 
         while (self.lexer.peekTokenIs(.plus) or self.lexer.peekTokenIs(.minus)) {
-            const operator = switch (self.lexer.nextToken().kind) {
-                .plus => ast.Operator.plus,
-                .minus => ast.Operator.minus,
-                else => unreachable,
-            };
+            const operator = try self.readOperator();
             const expression2 = try self.parseExpressionB();
 
             var expression3 = self.allocator.create(ast.NodeKind) catch |err|
