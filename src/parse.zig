@@ -169,8 +169,9 @@ pub const Parser = struct {
                 try self.expectAndSkip(.comma);
             }
 
-            args.append(.{ .arg = .{ .name = arg_name, .arg_type = arg_type } }) catch |err|
-                return self.propagateUnrecoverableError(err);
+            const arg = .{ .arg = .{ .name = arg_name, .arg_type = arg_type } };
+
+            args.append(arg) catch |err| return self.propagateUnrecoverableError(err);
         }
 
         try self.expectAndSkip(.close_paren);
@@ -223,18 +224,20 @@ pub const Parser = struct {
     }
 
     fn parseBody(self: *Parser) ParseError!ast.NodeArray {
-        var nodes = ast.NodeArray.init(self.allocator);
-
         try self.expectAndSkip(.open_brace);
+
+        var nodes = ast.NodeArray.init(self.allocator);
 
         while (!self.lexer.peekTokenIs(.close_brace)) {
             const next = self.lexer.nextToken();
-            nodes.append(try switch (next.kind) {
+            const node = try switch (next.kind) {
                 .keyword_let => self.parseLet(),
                 .keyword_if => self.parseIf(),
                 .keyword_return => self.parseReturn(),
                 else => self.propagateCustomError("Keyword", next),
-            }) catch |err| return self.propagateUnrecoverableError(err);
+            };
+
+            nodes.append(node) catch |err| return self.propagateUnrecoverableError(err);
         }
 
         try self.expectAndSkip(.close_brace);
