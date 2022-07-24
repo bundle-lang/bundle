@@ -170,7 +170,6 @@ pub const Parser = struct {
             }
 
             const arg = .{ .arg = .{ .name = arg_name, .arg_type = arg_type } };
-
             args.append(arg) catch |err| return self.propagateUnrecoverableError(err);
         }
 
@@ -205,8 +204,8 @@ pub const Parser = struct {
             const elif_condition = try self.parseExpression();
             const elif_body = try self.parseBody();
 
-            elif_nodes.?.append(ast.NodeKind{ .elif_stmt = .{ .elif_condition = elif_condition, .elif_body = elif_body } }) catch |err|
-                return self.propagateUnrecoverableError(err);
+            const elif_stmt = .{ .elif_stmt = .{ .elif_condition = elif_condition, .elif_body = elif_body } };
+            elif_nodes.?.append(elif_stmt) catch |err| return self.propagateUnrecoverableError(err);
         }
 
         var else_body: ?ast.NodeArray = null;
@@ -230,13 +229,13 @@ pub const Parser = struct {
 
         while (!self.lexer.peekTokenIs(.close_brace)) {
             const next = self.lexer.nextToken();
+
             const node = try switch (next.kind) {
                 .keyword_let => self.parseLet(),
                 .keyword_if => self.parseIf(),
                 .keyword_return => self.parseReturn(),
                 else => self.propagateCustomError("Keyword", next),
             };
-
             nodes.append(node) catch |err| return self.propagateUnrecoverableError(err);
         }
 
