@@ -18,8 +18,8 @@ pub fn main() !void {
 
     if (args.len == 2) {
         const file = args[1];
-        const src = fs.cwd().readFileAlloc(allocator, file, 1024 * 1024 * 64) catch {
-            log.err("the file to be read is too large", .{});
+        const src = fs.cwd().readFileAlloc(allocator, file, 1024 * 1024 * 64) catch |err| {
+            log.err("file reading failed with {}", .{err});
             return;
         };
 
