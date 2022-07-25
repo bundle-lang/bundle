@@ -90,7 +90,7 @@ pub const Parser = struct {
             .literal_false => .{ .primary_expr = .{ .boolean = false } },
             .identifier => .{ .primary_expr = .{ .identifier = next.literal } },
             .open_paren => grouping: {
-                const expr = try self.parseExpression();
+                const expr = try self.parseExpr();
                 try self.expectAndSkip(.close_paren);
                 break :grouping .{ .primary_expr = .{ .grouping = expr } };
             },
@@ -111,7 +111,7 @@ pub const Parser = struct {
         return unary;
     }
 
-    fn parseExpressionC(self: *Parser) ParseError!*ast.NodeKind {
+    fn parseExprC(self: *Parser) ParseError!*ast.NodeKind {
         if (self.lexer.peekTokenIs(.plus) or self.lexer.peekTokenIs(.minus)) {
             return try self.parseUnaryExpr();
         } else {
@@ -119,12 +119,12 @@ pub const Parser = struct {
         }
     }
 
-    fn parseExpressionB(self: *Parser) ParseError!*ast.NodeKind {
-        var expression1 = try self.parseExpressionC();
+    fn parseExprB(self: *Parser) ParseError!*ast.NodeKind {
+        var expression1 = try self.parseExprC();
 
         while (self.lexer.peekTokenIs(.star) or self.lexer.peekTokenIs(.slash)) {
             const operator = try self.readOperator();
-            const expression2 = try self.parseExpressionC();
+            const expression2 = try self.parseExprC();
 
             var expression3 = self.allocator.create(ast.NodeKind) catch |err|
                 return self.propagateUnrecoverableError(err);
@@ -135,12 +135,12 @@ pub const Parser = struct {
         return expression1;
     }
 
-    fn parseExpressionA(self: *Parser) ParseError!*ast.NodeKind {
-        var expression1 = try self.parseExpressionB();
+    fn parseExprA(self: *Parser) ParseError!*ast.NodeKind {
+        var expression1 = try self.parseExprB();
 
         while (self.lexer.peekTokenIs(.plus) or self.lexer.peekTokenIs(.minus)) {
             const operator = try self.readOperator();
-            const expression2 = try self.parseExpressionB();
+            const expression2 = try self.parseExprB();
 
             var expression3 = self.allocator.create(ast.NodeKind) catch |err|
                 return self.propagateUnrecoverableError(err);
@@ -151,11 +151,11 @@ pub const Parser = struct {
         return expression1;
     }
 
-    fn parseExpression(self: *Parser) ParseError!*ast.NodeKind {
-        return try self.parseExpressionA();
+    fn parseExpr(self: *Parser) ParseError!*ast.NodeKind {
+        return try self.parseExprA();
     }
 
-    fn parseFn(self: *Parser) ParseError!ast.NodeKind {
+    fn parseFnDecl(self: *Parser) ParseError!ast.NodeKind {
         const name = try self.readIdentifier();
 
         try self.expectAndSkip(.open_paren);
@@ -181,19 +181,19 @@ pub const Parser = struct {
         return ast.NodeKind{ .fn_decl = .{ .name = name, .args = args, .fn_type = fn_type, .body = body } };
     }
 
-    fn parseLet(self: *Parser) ParseError!ast.NodeKind {
+    fn parseLetStmt(self: *Parser) ParseError!ast.NodeKind {
         const name = try self.readIdentifier();
 
         const let_type = try self.readType();
         try self.expectAndSkip(.equal);
 
-        const value = try self.parseExpression();
+        const value = try self.parseExpr();
 
-        return ast.NodeKind{ .var_decl = .{ .name = name, .let_type = let_type, .value = value } };
+        return ast.NodeKind{ .let_stmt = .{ .name = name, .let_type = let_type, .value = value } };
     }
 
-    fn parseIf(self: *Parser) ParseError!ast.NodeKind {
-        const if_condition = try self.parseExpression();
+    fn parseIfStmt(self: *Parser) ParseError!ast.NodeKind {
+        const if_condition = try self.parseExpr();
         const if_body = try self.parseBody();
 
         var elif_nodes = if (self.lexer.peekTokenIs(.keyword_elif)) ast.NodeArray.init(self.allocator) else null;
@@ -201,7 +201,7 @@ pub const Parser = struct {
         while (self.lexer.peekTokenIs(.keyword_elif)) {
             _ = self.lexer.nextToken();
 
-            const elif_condition = try self.parseExpression();
+            const elif_condition = try self.parseExpr();
             const elif_body = try self.parseBody();
 
             const elif_stmt = ast.NodeKind{ .elif_stmt = .{ .elif_condition = elif_condition, .elif_body = elif_body } };
@@ -217,8 +217,8 @@ pub const Parser = struct {
         return ast.NodeKind{ .if_stmt = .{ .if_condition = if_condition, .if_body = if_body, .elif_nodes = elif_nodes, .else_body = else_body } };
     }
 
-    fn parseReturn(self: *Parser) ParseError!ast.NodeKind {
-        const value = try self.parseExpression();
+    fn parseReturnStmt(self: *Parser) ParseError!ast.NodeKind {
+        const value = try self.parseExpr();
         return ast.NodeKind{ .return_stmt = .{ .value = value } };
     }
 
@@ -231,9 +231,9 @@ pub const Parser = struct {
             const next = self.lexer.nextToken();
 
             const node = try switch (next.kind) {
-                .keyword_let => self.parseLet(),
-                .keyword_if => self.parseIf(),
-                .keyword_return => self.parseReturn(),
+                .keyword_let => self.parseLetStmt(),
+                .keyword_if => self.parseIfStmt(),
+                .keyword_return => self.parseReturnStmt(),
                 else => self.propagateCustomError("Keyword", next),
             };
             nodes.append(node) catch |err| return self.propagateUnrecoverableError(err);
@@ -247,8 +247,8 @@ pub const Parser = struct {
     pub fn nextNode(self: *Parser) ParseError!ast.NodeKind {
         const next = self.lexer.nextToken();
         return switch (next.kind) {
-            .keyword_fn => self.parseFn(),
-            .keyword_let => self.parseLet(),
+            .keyword_fn => self.parseFnDecl(),
+            .keyword_let => self.parseLetStmt(),
             .eof => ParseError.Eof,
             else => self.err orelse self.propagateCustomError("Keyword", next),
         };
