@@ -169,7 +169,7 @@ pub const Parser = struct {
                 try self.expectAndSkip(.comma);
             }
 
-            const arg = .{ .arg = .{ .name = arg_name, .arg_type = arg_type } };
+            const arg = ast.NodeKind{ .arg = .{ .name = arg_name, .arg_type = arg_type } };
             args.append(arg) catch |err| return self.propagateUnrecoverableError(err);
         }
 
@@ -204,7 +204,7 @@ pub const Parser = struct {
             const elif_condition = try self.parseExpression();
             const elif_body = try self.parseBody();
 
-            const elif_stmt = .{ .elif_stmt = .{ .elif_condition = elif_condition, .elif_body = elif_body } };
+            const elif_stmt = ast.NodeKind{ .elif_stmt = .{ .elif_condition = elif_condition, .elif_body = elif_body } };
             elif_nodes.?.append(elif_stmt) catch |err| return self.propagateUnrecoverableError(err);
         }
 
