@@ -196,6 +196,13 @@ pub const Parser = struct {
         return ast.NodeKind{ .let_stmt = .{ .name = name, .let_type = let_type, .value = value } };
     }
 
+    fn parseAssignStmt(self: *Parser, left_expr: *ast.NodeKind) ParseError!ast.NodeKind {
+        try self.expectAndSkip(.equal);
+        const value = try self.parseExpr();
+
+        return ast.NodeKind{ .assign_stmt = .{ .left_expr = left_expr, .value = value } };
+    }
+
     fn parseIfStmt(self: *Parser) ParseError!ast.NodeKind {
         try self.expectAndSkip(.keyword_if);
 
@@ -225,8 +232,8 @@ pub const Parser = struct {
 
     fn parseReturnStmt(self: *Parser) ParseError!ast.NodeKind {
         try self.expectAndSkip(.keyword_return);
-
         const value = try self.parseExpr();
+
         return ast.NodeKind{ .return_stmt = .{ .value = value } };
     }
 
@@ -241,9 +248,14 @@ pub const Parser = struct {
                 .keyword_let => self.parseLetStmt(),
                 .keyword_if => self.parseIfStmt(),
                 .keyword_return => self.parseReturnStmt(),
-                else => err: {
-                    defer _ = self.lexer.nextToken();
-                    break :err self.propagateCustomError("Keyword", next);
+                else => expr: {
+                    const expr = try self.parseExpr();
+
+                    if (self.lexer.peekTokenIs(.equal)) {
+                        break :expr try self.parseAssignStmt(expr);
+                    }
+
+                    break :expr expr.*;
                 },
             };
 
@@ -263,7 +275,7 @@ pub const Parser = struct {
             .eof => ParseError.Eof,
             else => err: {
                 defer _ = self.lexer.nextToken();
-                break :err self.err orelse self.propagateCustomError("Keyword", next);
+                break :err self.err orelse self.propagateCustomError("Declaration", next);
             },
         };
     }

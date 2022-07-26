@@ -6,6 +6,7 @@ pub const NodeArray = std.ArrayList(NodeKind);
 pub const NodeKind = union(enum) {
     fn_decl: NodeFnDecl,
     let_stmt: NodeLetStmt,
+    assign_stmt: NodeAssignStmt,
     if_stmt: NodeIfStmt,
     elif_stmt: NodeElifStmt,
     return_stmt: NodeReturnStmt,
@@ -45,6 +46,11 @@ pub const NodeFnDecl = struct {
 pub const NodeLetStmt = struct {
     name: []const u8,
     let_type: Type,
+    value: *NodeKind,
+};
+
+pub const NodeAssignStmt = struct {
+    left_expr: *NodeKind,
     value: *NodeKind,
 };
 
