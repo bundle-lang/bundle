@@ -156,6 +156,8 @@ pub const Parser = struct {
     }
 
     fn parseFnDecl(self: *Parser) ParseError!ast.NodeKind {
+        try self.expectAndSkip(.keyword_fn);
+
         const name = try self.readIdentifier();
 
         try self.expectAndSkip(.open_paren);
@@ -182,6 +184,8 @@ pub const Parser = struct {
     }
 
     fn parseLetStmt(self: *Parser) ParseError!ast.NodeKind {
+        try self.expectAndSkip(.keyword_let);
+
         const name = try self.readIdentifier();
 
         const let_type = try self.readType();
@@ -193,6 +197,8 @@ pub const Parser = struct {
     }
 
     fn parseIfStmt(self: *Parser) ParseError!ast.NodeKind {
+        try self.expectAndSkip(.keyword_if);
+
         const if_condition = try self.parseExpr();
         const if_body = try self.parseBody();
 
@@ -218,6 +224,8 @@ pub const Parser = struct {
     }
 
     fn parseReturnStmt(self: *Parser) ParseError!ast.NodeKind {
+        try self.expectAndSkip(.keyword_return);
+
         const value = try self.parseExpr();
         return ast.NodeKind{ .return_stmt = .{ .value = value } };
     }
@@ -228,14 +236,17 @@ pub const Parser = struct {
         var nodes = ast.NodeArray.init(self.allocator);
 
         while (!self.lexer.peekTokenIs(.close_brace)) {
-            const next = self.lexer.nextToken();
-
+            const next = self.lexer.peekToken();
             const node = try switch (next.kind) {
                 .keyword_let => self.parseLetStmt(),
                 .keyword_if => self.parseIfStmt(),
                 .keyword_return => self.parseReturnStmt(),
-                else => self.propagateCustomError("Keyword", next),
+                else => err: {
+                    defer _ = self.lexer.nextToken();
+                    break :err self.propagateCustomError("Keyword", next);
+                },
             };
+
             nodes.append(node) catch |err| return self.propagateUnrecoverableError(err);
         }
 
@@ -245,12 +256,15 @@ pub const Parser = struct {
     }
 
     pub fn nextNode(self: *Parser) ParseError!ast.NodeKind {
-        const next = self.lexer.nextToken();
+        const next = self.lexer.peekToken();
         return switch (next.kind) {
             .keyword_fn => self.parseFnDecl(),
             .keyword_let => self.parseLetStmt(),
             .eof => ParseError.Eof,
-            else => self.err orelse self.propagateCustomError("Keyword", next),
+            else => err: {
+                defer _ = self.lexer.nextToken();
+                break :err self.err orelse self.propagateCustomError("Keyword", next);
+            },
         };
     }
 

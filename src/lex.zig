@@ -133,7 +133,7 @@ pub const Lexer = struct {
         return self.peekToken().kind == kind;
     }
 
-    fn peekToken(self: *Lexer) Token {
+    pub fn peekToken(self: *Lexer) Token {
         var copy = self.*;
         return copy.nextToken();
     }
