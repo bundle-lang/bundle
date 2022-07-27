@@ -217,9 +217,7 @@ pub const Lexer = struct {
                     token.kind = .close_brace;
                 },
                 '\n' => {
-                    while (self.pos < self.src.len and ascii.isSpace(self.curChar())) {
-                        self.nextChar();
-                    }
+                    self.nextChar();
                     token.kind = .eol;
                 },
                 else => {
