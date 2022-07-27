@@ -25,15 +25,13 @@ pub const Parser = struct {
     }
 
     fn propagateCustomError(self: *Parser, expected: []const u8, found: lex.Token) ParseError {
-        const found_literal = if (found.kind == .eol) found.kind.symbol() else found.literal;
-        log.err("{s}:{}:{} expected `{s}` found `{s}`", .{ self.lexer.unit, found.line, found.column, expected, found_literal });
+        log.err("{s}:{}:{} expected `{s}` found `{s}`", .{ self.lexer.unit, found.line, found.column, expected, found.kind.symbol() });
 
         return ParseError.ParseFail;
     }
 
     fn propagateError(self: *Parser, expected: lex.Token.Kind, found: lex.Token) ParseError {
-        const found_literal = if (found.kind == .eol) found.kind.symbol() else found.literal;
-        log.err("{s}:{}:{} expected `{s}` found `{s}`", .{ self.lexer.unit, found.line, found.column, expected.symbol(), found_literal });
+        log.err("{s}:{}:{} expected `{s}` found `{s}`", .{ self.lexer.unit, found.line, found.column, expected.symbol(), found.kind.symbol() });
 
         return ParseError.ParseFail;
     }
