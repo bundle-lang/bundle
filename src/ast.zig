@@ -89,5 +89,5 @@ pub const NodeBinaryExpr = struct {
 
 pub const NodeCallExpr = struct {
     left_expr: *NodeKind,
-    arguments: NodeArray,
+    args: NodeArray,
 };

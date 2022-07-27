@@ -104,6 +104,14 @@ pub const Parser = struct {
             else => return self.propagateCustomError("Expression", next),
         };
 
+        if (self.lexer.peekTokenIs(.open_paren)) {
+            var call = self.allocator.create(ast.NodeKind) catch |err|
+                return self.propagateUnrecoverableError(err);
+            call.* = try self.parseCallExpr(primary);
+
+            return call;
+        }
+
         return primary;
     }
 
@@ -160,6 +168,25 @@ pub const Parser = struct {
 
     fn parseExpr(self: *Parser) ParseError!*ast.NodeKind {
         return try self.parseExprA();
+    }
+
+    fn parseCallExpr(self: *Parser, left_expr: *ast.NodeKind) ParseError!ast.NodeKind {
+        try self.expectAndSkip(.open_paren);
+        var args = ast.NodeArray.init(self.allocator);
+
+        while (!self.lexer.peekTokenIs(.close_paren)) {
+            const arg_expr = try self.parseExpr();
+
+            if (!self.lexer.peekTokenIs(.close_paren)) {
+                try self.expectAndSkip(.comma);
+            }
+
+            args.append(arg_expr.*) catch |err| return self.propagateUnrecoverableError(err);
+        }
+
+        try self.expectAndSkip(.close_paren);
+
+        return ast.NodeKind{ .call_expr = .{ .left_expr = left_expr, .args = args } };
     }
 
     fn parseFnDecl(self: *Parser) ParseError!ast.NodeKind {
