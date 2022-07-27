@@ -11,6 +11,7 @@ pub const Token = struct {
         // internals
         eof,
         unknown,
+        eol,
 
         // keywords
         identifier,
@@ -51,6 +52,7 @@ pub const Token = struct {
             return switch (kind) {
                 .eof => "Eof",
                 .unknown => "Unknown",
+                .eol => "New line",
 
                 .identifier => "Identifier",
                 .keyword_fn => "fn",
@@ -139,7 +141,7 @@ pub const Lexer = struct {
     }
 
     pub fn nextToken(self: *Lexer) Token {
-        while (self.pos < self.src.len and ascii.isSpace(self.curChar())) {
+        while (self.pos < self.src.len and ascii.isSpace(self.curChar()) and self.curChar() != '\n') {
             self.nextChar();
         }
 
@@ -213,6 +215,12 @@ pub const Lexer = struct {
                 '}' => {
                     self.nextChar();
                     token.kind = .close_brace;
+                },
+                '\n' => {
+                    while (self.pos < self.src.len and ascii.isSpace(self.curChar())) {
+                        self.nextChar();
+                    }
+                    token.kind = .eol;
                 },
                 else => {
                     self.nextChar();

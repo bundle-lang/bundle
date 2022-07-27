@@ -25,18 +25,22 @@ pub const Parser = struct {
     }
 
     fn propagateCustomError(self: *Parser, expected: []const u8, found: lex.Token) ParseError {
-        log.err("{s}:{}:{} expected `{s}` found `{s}`", .{ self.lexer.unit, found.line, found.column, expected, found.literal });
+        const found_literal = if (found.kind == .eol) found.kind.symbol() else found.literal;
+        log.err("{s}:{}:{} expected `{s}` found `{s}`", .{ self.lexer.unit, found.line, found.column, expected, found_literal });
+
         return ParseError.ParseFail;
     }
 
     fn propagateError(self: *Parser, expected: lex.Token.Kind, found: lex.Token) ParseError {
-        log.err("{s}:{}:{} expected `{s}` found `{s}`", .{ self.lexer.unit, found.line, found.column, expected.symbol(), found.literal });
+        const found_literal = if (found.kind == .eol) found.kind.symbol() else found.literal;
+        log.err("{s}:{}:{} expected `{s}` found `{s}`", .{ self.lexer.unit, found.line, found.column, expected.symbol(), found_literal });
+
         return ParseError.ParseFail;
     }
 
     fn expectAndSkip(self: *Parser, expected: lex.Token.Kind) ParseError!void {
         const next = self.lexer.nextToken();
-        if (next.kind != expected) {
+        if (next.kind != expected and !(expected == .eol and next.kind == .eof)) {
             return self.propagateError(expected, next);
         }
     }
@@ -179,6 +183,7 @@ pub const Parser = struct {
         const fn_type = try self.readType();
 
         const body = try self.parseBody();
+        try self.expectAndSkip(.eol);
 
         return ast.NodeKind{ .fn_decl = .{ .name = name, .args = args, .fn_type = fn_type, .body = body } };
     }
@@ -193,12 +198,16 @@ pub const Parser = struct {
 
         const value = try self.parseExpr();
 
+        try self.expectAndSkip(.eol);
+
         return ast.NodeKind{ .let_stmt = .{ .name = name, .let_type = let_type, .value = value } };
     }
 
     fn parseAssignStmt(self: *Parser, left_expr: *ast.NodeKind) ParseError!ast.NodeKind {
         try self.expectAndSkip(.equal);
         const value = try self.parseExpr();
+
+        try self.expectAndSkip(.eol);
 
         return ast.NodeKind{ .assign_stmt = .{ .left_expr = left_expr, .value = value } };
     }
@@ -227,12 +236,16 @@ pub const Parser = struct {
             else_body = try self.parseBody();
         }
 
+        try self.expectAndSkip(.eol);
+
         return ast.NodeKind{ .if_stmt = .{ .if_condition = if_condition, .if_body = if_body, .elif_nodes = elif_nodes, .else_body = else_body } };
     }
 
     fn parseReturnStmt(self: *Parser) ParseError!ast.NodeKind {
         try self.expectAndSkip(.keyword_return);
         const value = try self.parseExpr();
+
+        try self.expectAndSkip(.eol);
 
         return ast.NodeKind{ .return_stmt = .{ .value = value } };
     }
@@ -241,6 +254,9 @@ pub const Parser = struct {
         try self.expectAndSkip(.open_brace);
 
         var nodes = ast.NodeArray.init(self.allocator);
+        if (!self.lexer.peekTokenIs(.close_brace)) {
+            try self.expectAndSkip(.eol);
+        }
 
         while (!self.lexer.peekTokenIs(.close_brace)) {
             const next = self.lexer.peekToken();
@@ -252,9 +268,10 @@ pub const Parser = struct {
                     const expr = try self.parseExpr();
 
                     if (self.lexer.peekTokenIs(.equal)) {
-                        break :expr try self.parseAssignStmt(expr);
+                        expr.* = try self.parseAssignStmt(expr);
                     }
 
+                    try self.expectAndSkip(.eol);
                     break :expr expr.*;
                 },
             };
