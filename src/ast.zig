@@ -14,6 +14,7 @@ pub const NodeKind = union(enum) {
     primary_expr: NodePrimaryExpr,
     unary_expr: NodeUnaryExpr,
     binary_expr: NodeBinaryExpr,
+    call_expr: NodeCallExpr,
 };
 
 pub const Type = enum {
@@ -84,4 +85,9 @@ pub const NodeBinaryExpr = struct {
     left: *NodeKind,
     operator: Operator,
     right: *NodeKind,
+};
+
+pub const NodeCallExpr = struct {
+    left_expr: *NodeKind,
+    arguments: NodeArray,
 };
