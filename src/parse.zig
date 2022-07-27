@@ -268,7 +268,7 @@ pub const Parser = struct {
                     const expr = try self.parseExpr();
 
                     if (self.lexer.peekTokenIs(.equal)) {
-                        expr.* = try self.parseAssignStmt(expr);
+                        break :expr try self.parseAssignStmt(expr);
                     }
 
                     try self.expectAndSkip(.eol);
