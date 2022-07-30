@@ -111,3 +111,55 @@ const Visitor = struct {
         };
     }
 };
+
+pub fn traverseArray(array: ast.NodeArray, visitor: Visitor) void {
+    for (array.items) |node| {
+        traverse(node, visitor);
+    }
+}
+
+pub fn traverse(node: ast.NodeKind, visitor: Visitor) void {
+    visitor.dispatch(node);
+
+    switch (node) {
+        .fn_decl => |decl| {
+            traverseArray(decl.args, visitor);
+            traverseArray(decl.body, visitor);
+        },
+        .let_stmt => |stmt| {
+            traverse(stmt.value.*, visitor);
+        },
+        .assign_stmt => |stmt| {
+            traverse(stmt.left_expr.*, visitor);
+            traverse(stmt.value.*, visitor);
+        },
+        .if_stmt => |stmt| {
+            traverse(stmt.if_condition.*, visitor);
+            traverseArray(stmt.if_body, visitor);
+            if (stmt.elif_nodes) |nodes| traverseArray(nodes, visitor);
+            if (stmt.else_body) |nodes| traverseArray(nodes, visitor);
+        },
+        .elif_stmt => |stmt| {
+            traverse(stmt.elif_condition.*, visitor);
+            traverseArray(stmt.elif_body, visitor);
+        },
+        .return_stmt => |stmt| {
+            traverse(stmt.value.*, visitor);
+        },
+        .primary_expr => |expr| if (expr == .grouping) {
+            traverse(expr.grouping.*, visitor);
+        },
+        .unary_expr => |expr| {
+            traverse(expr.expr.*, visitor);
+        },
+        .binary_expr => |expr| {
+            traverse(expr.left.*, visitor);
+            traverse(expr.right.*, visitor);
+        },
+        .call_expr => |expr| {
+            traverse(expr.left_expr.*, visitor);
+            traverseArray(expr.args, visitor);
+        },
+        .arg => {},
+    }
+}
