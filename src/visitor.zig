@@ -97,17 +97,17 @@ const Visitor = struct {
 
     fn dispatch(self: Visitor, node: ast.NodeKind) void {
         return switch (node) {
-            .fn_decl => self.visitFnDecl(node),
-            .let_stmt => self.visitLetStmt(node),
-            .assign_stmt => self.visitAssignStmt(node),
-            .if_stmt => self.visitIfStmt(node),
-            .elif_stmt => self.visitElifStmt(node),
-            .return_stmt => self.visitReturnStmt(node),
-            .arg => self.visitArg(node),
-            .primary_expr => self.visitPrimaryExpr(node),
-            .unary_expr => self.visitUnaryExpr(node),
-            .binary_expr => self.visitBinaryExpr(node),
-            .call_expr => self.visitCallExpr(node),
+            .fn_decl => |decl| self.visitFnDecl(decl),
+            .let_stmt => |stmt| self.visitLetStmt(stmt),
+            .assign_stmt => |stmt| self.visitAssignStmt(stmt),
+            .if_stmt => |stmt| self.visitIfStmt(stmt),
+            .elif_stmt => |stmt| self.visitElifStmt(stmt),
+            .return_stmt => |stmt| self.visitReturnStmt(stmt),
+            .arg => |arg| self.visitArg(arg),
+            .primary_expr => |expr| self.visitPrimaryExpr(expr),
+            .unary_expr => |expr| self.visitUnaryExpr(expr),
+            .binary_expr => |expr| self.visitBinaryExpr(expr),
+            .call_expr => |expr| self.visitCallExpr(expr),
         };
     }
 };
