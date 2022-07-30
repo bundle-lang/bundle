@@ -59,7 +59,6 @@ pub const Parser = struct {
     fn readType(self: *Parser) ParseError!ast.Type {
         const next = self.lexer.nextToken();
         return switch (next.kind) {
-            .type_u32 => .type_u32,
             .type_i32 => .type_i32,
             .type_bool => .type_bool,
             else => self.propagateCustomError("Type", next),

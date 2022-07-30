@@ -28,7 +28,6 @@ pub const Token = struct {
         literal_false,
 
         // types
-        type_u32,
         type_i32,
         type_bool,
 
@@ -66,7 +65,6 @@ pub const Token = struct {
                 .literal_true => "true",
                 .literal_false => "false",
 
-                .type_u32 => "u32",
                 .type_i32 => "i32",
                 .type_bool => "bool",
 
@@ -98,7 +96,6 @@ pub const Token = struct {
         .{ "true", .literal_true },
         .{ "false", .literal_false },
 
-        .{ "u32", .type_u32 },
         .{ "i32", .type_i32 },
         .{ "bool", .type_bool },
     });

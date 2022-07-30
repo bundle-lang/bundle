@@ -18,7 +18,6 @@ pub const NodeKind = union(enum) {
 };
 
 pub const Type = enum {
-    type_u32,
     type_i32,
     type_bool,
 };

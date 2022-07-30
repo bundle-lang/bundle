@@ -1,6 +1,5 @@
 fn main() i32 {
-    let a u32 = 1
+    let a i32 = 1
     a = 0
-    
     return a
 }
