@@ -1,7 +1,6 @@
 const std = @import("std");
 const log = std.log;
 
-const parse = @import("parse.zig");
 const ast = @import("ast.zig");
 const visitor = @import("visitor.zig");
 
