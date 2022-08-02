@@ -5,6 +5,7 @@ const process = std.process;
 
 const lex = @import("lex.zig");
 const parse = @import("parse.zig");
+const type_check = @import("type_check.zig");
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 var arena = std.heap.ArenaAllocator.init(gpa.allocator());
@@ -20,7 +21,7 @@ pub fn main() !void {
         const file = args[1];
         const src = fs.cwd().readFileAlloc(allocator, file, 1024 * 1024 * 64) catch |err| {
             log.err("file reading failed with {}", .{err});
-            return;
+            process.exit(1);
         };
 
         var lexer = lex.new(file, src);
@@ -28,8 +29,10 @@ pub fn main() !void {
 
         parser.parse() catch |err| {
             log.debug("parsing failed, got {}", .{err});
-            return;
+            process.exit(1);
         };
+
+        type_check.new(parser.nodes).check(); // TODO Error reporting.
     } else {
         log.err("specify a file name", .{});
     }
