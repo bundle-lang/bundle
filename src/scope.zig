@@ -12,7 +12,7 @@ pub const Scope = struct {
     declarations: Declarations,
 
     pub fn declare(self: *Scope, name: []const u8, definition: ast.NodeKind) void {
-        if (self.contains(name)) {
+        if (self.findDecl(name) != null) {
             std.log.err("redeclaration of `{s}`", .{name});
         }
 
@@ -29,18 +29,6 @@ pub const Scope = struct {
         }
 
         return null;
-    }
-
-    pub fn contains(self: *Scope, name: []const u8) bool {
-        var scope: ?*Scope = self;
-
-        while (scope) |s| : (scope = s.outer) {
-            if (s.declarations.contains(name)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 };
 
