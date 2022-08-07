@@ -13,7 +13,7 @@ const TypeChecker = struct {
 
     fn inferType(self: *TypeChecker, node: *ast.NodeKind) ast.Type {
         return switch (node.*) {
-            .reference => |ref| switch (self.decl_table.table.get(ref.id).?) {
+            .reference => |ref| switch (self.decl_table.get(ref.id).?) {
                 .fn_decl => |decl| decl.fn_type,
                 .let_stmt => |stmt| stmt.let_type,
                 .arg => |arg| arg.arg_type,

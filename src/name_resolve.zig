@@ -5,15 +5,7 @@ const visitor = @import("visitor.zig");
 const scope = @import("scope.zig");
 
 const Allocator = std.mem.Allocator;
-const Table = std.AutoHashMap(ast.NodeId, ast.NodeKind);
-
-pub const DeclTable = struct {
-    table: Table,
-
-    pub fn new(allocator: Allocator) DeclTable {
-        return DeclTable{ .table = Table.init(allocator) };
-    }
-};
+pub const DeclTable = std.AutoHashMap(ast.NodeId, ast.NodeKind);
 
 const GlobalNameDecl = struct {
     nodes: ast.NodeArray,
@@ -53,9 +45,9 @@ const LocalNameDecl = struct {
 
     pub fn visitReference(self: *LocalNameDecl, node: ast.NodeReference) void {
         if (self.scope.findDecl(node.name)) |decl| {
-            self.decl_table.table.put(node.id, decl) catch unreachable;
+            self.decl_table.put(node.id, decl) catch unreachable;
         } else if (self.global_scope.findDecl(node.name)) |decl| {
-            self.decl_table.table.put(node.id, decl) catch unreachable;
+            self.decl_table.put(node.id, decl) catch unreachable;
         } else {
             std.log.err("undefined reference to `{s}`", .{node.name});
         }
@@ -80,7 +72,7 @@ const LocalNameDecl = struct {
             .nodes = nodes,
             .global_scope = global_scope,
             .scope = scope.new(allocator, null),
-            .decl_table = DeclTable.new(allocator),
+            .decl_table = DeclTable.init(allocator),
         };
     }
 };
