@@ -343,7 +343,6 @@ pub const Parser = struct {
         const next = self.lexer.peekToken();
         return switch (next.kind) {
             .keyword_fn => self.parseFnDecl(),
-            .keyword_let => self.parseLetStmt(),
             .eof => ParseError.Eof,
             else => err: {
                 defer _ = self.lexer.nextToken();
