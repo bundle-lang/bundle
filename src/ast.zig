@@ -1,8 +1,10 @@
 const std = @import("std");
 
 pub const NodeArray = std.ArrayList(NodeKind);
+pub const NodeId = u32;
 
 pub const NodeKind = union(enum) {
+    block_stmt: NodeBlockStmt,
     fn_decl: NodeFnDecl,
     let_stmt: NodeLetStmt,
     assign_stmt: NodeAssignStmt,
@@ -10,7 +12,9 @@ pub const NodeKind = union(enum) {
     elif_stmt: NodeElifStmt,
     return_stmt: NodeReturnStmt,
     arg: NodeArg,
-    primary_expr: NodePrimaryExpr,
+    reference: NodeReference,
+    grouping_expr: NodeGroupingExpr,
+    literal_expr: NodeLiteralExpr,
     unary_expr: NodeUnaryExpr,
     binary_expr: NodeBinaryExpr,
     call_expr: NodeCallExpr,
@@ -28,18 +32,15 @@ pub const Operator = enum {
     slash,
 };
 
-pub const NodePrimaryExpr = union(enum) {
-    integer: u32,
-    boolean: bool,
-    identifier: []const u8,
-    grouping: *NodeKind,
+pub const NodeBlockStmt = struct {
+    list: NodeArray,
 };
 
 pub const NodeFnDecl = struct {
     name: []const u8,
     args: NodeArray,
     fn_type: Type,
-    body: NodeArray,
+    body: NodeBlockStmt,
 };
 
 pub const NodeLetStmt = struct {
@@ -55,14 +56,14 @@ pub const NodeAssignStmt = struct {
 
 pub const NodeIfStmt = struct {
     if_condition: *NodeKind,
-    if_body: NodeArray,
+    if_body: NodeBlockStmt,
     elif_nodes: ?NodeArray,
-    else_body: ?NodeArray,
+    else_body: ?NodeBlockStmt,
 };
 
 pub const NodeElifStmt = struct {
     elif_condition: *NodeKind,
-    elif_body: NodeArray,
+    elif_body: NodeBlockStmt,
 };
 
 pub const NodeReturnStmt = struct {
@@ -72,6 +73,20 @@ pub const NodeReturnStmt = struct {
 pub const NodeArg = struct {
     name: []const u8,
     arg_type: Type,
+};
+
+pub const NodeReference = struct {
+    id: NodeId,
+    name: []const u8,
+};
+
+pub const NodeGroupingExpr = struct {
+    expr: *NodeKind,
+};
+
+pub const NodeLiteralExpr = union(enum) {
+    integer: u32,
+    boolean: bool,
 };
 
 pub const NodeUnaryExpr = struct {

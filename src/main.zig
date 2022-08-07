@@ -5,6 +5,7 @@ const process = std.process;
 
 const lex = @import("lex.zig");
 const parse = @import("parse.zig");
+const name_resolve = @import("name_resolve.zig");
 const type_check = @import("type_check.zig");
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -32,7 +33,8 @@ pub fn main() !void {
             process.exit(1);
         };
 
-        type_check.new(parser.nodes).check(); // TODO Error reporting.
+        const decl_table = name_resolve.new(allocator, parser.nodes).build(); // TODO: proper error reporting.
+        type_check.new(parser.nodes, decl_table).check();
     } else {
         log.err("specify a file name", .{});
     }

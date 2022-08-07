@@ -17,6 +17,7 @@ pub const Parser = struct {
     allocator: Allocator,
     lexer: lex.Lexer,
     nodes: ast.NodeArray,
+    id_count: ast.NodeId,
     err: ?ParseError,
 
     fn propagateUnrecoverableError(_: *Parser, err: anyerror) ParseError {
@@ -31,6 +32,11 @@ pub const Parser = struct {
 
     fn propagateError(self: *Parser, expected: lex.Token.Kind, found: lex.Token) ParseError {
         return self.propagateCustomError(expected.symbol(), found);
+    }
+
+    pub fn nextNodeId(self: *Parser) ast.NodeId {
+        defer self.id_count += 1;
+        return self.id_count;
     }
 
     fn expectNewLine(self: *Parser) ParseError!void {
@@ -85,22 +91,42 @@ pub const Parser = struct {
         };
     }
 
+    fn parseReference(self: *Parser) ParseError!ast.NodeKind {
+        const id = self.nextNodeId();
+        const name = try self.readIdentifier();
+
+        return ast.NodeKind{ .reference = .{ .id = id, .name = name } };
+    }
+
+    fn parseGroupingExpr(self: *Parser) ParseError!ast.NodeKind {
+        try self.expectAndSkip(.open_paren);
+        const expr = try self.parseExpr();
+        try self.expectAndSkip(.close_paren);
+
+        return ast.NodeKind{ .grouping_expr = .{ .expr = expr } };
+    }
+
+    fn parseLiteralExpr(self: *Parser) ParseError!ast.NodeKind {
+        const next = self.lexer.nextToken();
+        const literal_expr = switch (next.kind) {
+            .literal_integer => ast.NodeLiteralExpr{ .integer = fmt.parseUnsigned(u32, next.literal, 0) catch unreachable },
+            .literal_true => ast.NodeLiteralExpr{ .boolean = true },
+            .literal_false => ast.NodeLiteralExpr{ .boolean = false },
+            else => return self.propagateCustomError("Literal", next),
+        };
+
+        return ast.NodeKind{ .literal_expr = literal_expr };
+    }
+
     fn parsePrimaryExpr(self: *Parser) ParseError!*ast.NodeKind {
         var primary = self.allocator.create(ast.NodeKind) catch |err|
             return self.propagateUnrecoverableError(err);
 
-        const next = self.lexer.nextToken();
+        const next = self.lexer.peekToken();
         primary.* = switch (next.kind) {
-            .literal_integer => .{ .primary_expr = .{ .integer = fmt.parseUnsigned(u32, next.literal, 0) catch unreachable } },
-            .literal_true => .{ .primary_expr = .{ .boolean = true } },
-            .literal_false => .{ .primary_expr = .{ .boolean = false } },
-            .identifier => .{ .primary_expr = .{ .identifier = next.literal } },
-            .open_paren => grouping: {
-                const expr = try self.parseExpr();
-                try self.expectAndSkip(.close_paren);
-                break :grouping .{ .primary_expr = .{ .grouping = expr } };
-            },
-            else => return self.propagateCustomError("Expression", next),
+            .identifier => try self.parseReference(),
+            .open_paren => try self.parseGroupingExpr(),
+            else => try self.parseLiteralExpr(),
         };
 
         if (self.lexer.peekTokenIs(.open_paren)) {
@@ -259,7 +285,7 @@ pub const Parser = struct {
             elif_nodes.?.append(elif_stmt) catch |err| return self.propagateUnrecoverableError(err);
         }
 
-        var else_body: ?ast.NodeArray = null;
+        var else_body: ?ast.NodeBlockStmt = null;
         if (self.lexer.peekTokenIs(.keyword_else)) {
             _ = self.lexer.nextToken();
             else_body = try self.parseBody();
@@ -279,7 +305,7 @@ pub const Parser = struct {
         return ast.NodeKind{ .return_stmt = .{ .value = value } };
     }
 
-    fn parseBody(self: *Parser) ParseError!ast.NodeArray {
+    fn parseBody(self: *Parser) ParseError!ast.NodeBlockStmt {
         try self.expectAndSkip(.open_brace);
 
         var nodes = ast.NodeArray.init(self.allocator);
@@ -310,7 +336,7 @@ pub const Parser = struct {
 
         try self.expectAndSkip(.close_brace);
 
-        return nodes;
+        return ast.NodeBlockStmt{ .list = nodes };
     }
 
     pub fn nextNode(self: *Parser) ParseError!ast.NodeKind {
@@ -346,6 +372,7 @@ pub fn new(allocator: Allocator, lexer: lex.Lexer) Parser {
         .allocator = allocator,
         .lexer = lexer,
         .nodes = ast.NodeArray.init(allocator),
+        .id_count = 0,
         .err = null,
     };
 }
