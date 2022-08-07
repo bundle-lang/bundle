@@ -39,8 +39,8 @@ const LocalNameDecl = struct {
         self.scope.declare(node.name, .{ .let_stmt = node });
     }
 
-    pub fn visitArg(self: *LocalNameDecl, node: ast.NodeArg) void {
-        self.scope.declare(node.name, .{ .arg = node });
+    pub fn visitParameter(self: *LocalNameDecl, node: ast.NodeParameter) void {
+        self.scope.declare(node.name, .{ .parameter = node });
     }
 
     pub fn visitReference(self: *LocalNameDecl, node: ast.NodeReference) void {

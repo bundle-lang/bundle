@@ -11,7 +11,7 @@ pub const NodeKind = union(enum) {
     if_stmt: NodeIfStmt,
     elif_stmt: NodeElifStmt,
     return_stmt: NodeReturnStmt,
-    arg: NodeArg,
+    parameter: NodeParameter,
     reference: NodeReference,
     grouping_expr: NodeGroupingExpr,
     literal_expr: NodeLiteralExpr,
@@ -38,7 +38,7 @@ pub const NodeBlockStmt = struct {
 
 pub const NodeFnDecl = struct {
     name: []const u8,
-    args: NodeArray,
+    parameters: NodeArray,
     fn_type: Type,
     body: NodeBlockStmt,
 };
@@ -70,9 +70,9 @@ pub const NodeReturnStmt = struct {
     value: *NodeKind,
 };
 
-pub const NodeArg = struct {
+pub const NodeParameter = struct {
     name: []const u8,
-    arg_type: Type,
+    parameter_type: Type,
 };
 
 pub const NodeReference = struct {
@@ -102,5 +102,5 @@ pub const NodeBinaryExpr = struct {
 
 pub const NodeCallExpr = struct {
     left_expr: *NodeKind,
-    args: NodeArray,
+    arguments: NodeArray,
 };

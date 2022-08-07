@@ -16,7 +16,7 @@ const TypeChecker = struct {
             .reference => |ref| switch (self.decl_table.get(ref.id).?) {
                 .fn_decl => |decl| decl.fn_type,
                 .let_stmt => |stmt| stmt.let_type,
-                .arg => |arg| arg.arg_type,
+                .parameter => |param| param.parameter_type,
                 else => unreachable,
             },
             .grouping_expr => |expr| self.inferType(expr.expr),

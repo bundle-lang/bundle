@@ -9,7 +9,7 @@ const Visitor = struct {
     visitIfStmtImpl: ?fn (*anyopaque, ast.NodeIfStmt) void,
     visitElifStmtImpl: ?fn (*anyopaque, ast.NodeElifStmt) void,
     visitReturnStmtImpl: ?fn (*anyopaque, ast.NodeReturnStmt) void,
-    visitArgImpl: ?fn (*anyopaque, ast.NodeArg) void,
+    visitParameterImpl: ?fn (*anyopaque, ast.NodeParameter) void,
     visitReferenceImpl: ?fn (*anyopaque, ast.NodeReference) void,
     visitGroupingExprImpl: ?fn (*anyopaque, ast.NodeGroupingExpr) void,
     visitLiteralExprImpl: ?fn (*anyopaque, ast.NodeLiteralExpr) void,
@@ -45,8 +45,8 @@ const Visitor = struct {
         if (self.visitReturnStmtImpl) |visitImpl| visitImpl(self.impl, node);
     }
 
-    inline fn visitArg(self: Visitor, node: ast.NodeArg) void {
-        if (self.visitArgImpl) |visitImpl| visitImpl(self.impl, node);
+    inline fn visitParameter(self: Visitor, node: ast.NodeParameter) void {
+        if (self.visitParameterImpl) |visitImpl| visitImpl(self.impl, node);
     }
 
     inline fn visitReference(self: Visitor, node: ast.NodeReference) void {
@@ -93,7 +93,7 @@ const Visitor = struct {
             .if_stmt => |stmt| self.visitIfStmt(stmt),
             .elif_stmt => |stmt| self.visitElifStmt(stmt),
             .return_stmt => |stmt| self.visitReturnStmt(stmt),
-            .arg => |arg| self.visitArg(arg),
+            .parameter => |param| self.visitParameter(param),
             .reference => |ref| self.visitReference(ref),
             .grouping_expr => |expr| self.visitGroupingExpr(expr),
             .literal_expr => |expr| self.visitLiteralExpr(expr),
@@ -142,7 +142,7 @@ pub fn new(impl: anytype) Visitor {
         .visitIfStmtImpl = newVisitImpl(impl_type, ast.NodeIfStmt, "visitIfStmt"),
         .visitElifStmtImpl = newVisitImpl(impl_type, ast.NodeElifStmt, "visitElifStmt"),
         .visitReturnStmtImpl = newVisitImpl(impl_type, ast.NodeReturnStmt, "visitReturnStmt"),
-        .visitArgImpl = newVisitImpl(impl_type, ast.NodeArg, "visitArg"),
+        .visitParameterImpl = newVisitImpl(impl_type, ast.NodeParameter, "visitParameter"),
         .visitReferenceImpl = newVisitImpl(impl_type, ast.NodeReference, "visitReference"),
         .visitGroupingExprImpl = newVisitImpl(impl_type, ast.NodeGroupingExpr, "visitGroupingExpr"),
         .visitLiteralExprImpl = newVisitImpl(impl_type, ast.NodeLiteralExpr, "visitLiteralExpr"),
@@ -177,7 +177,7 @@ pub fn traverse(node: ast.NodeKind, visitor: Visitor) void {
         },
         .fn_decl => |decl| {
             visitor.enterBlockStmt(decl.body);
-            traverseArray(decl.args, visitor);
+            traverseArray(decl.parameters, visitor);
             traverseBlock(decl.body, visitor);
 
             visitor.exitFnDecl(decl);
@@ -221,8 +221,8 @@ pub fn traverse(node: ast.NodeKind, visitor: Visitor) void {
         },
         .call_expr => |expr| {
             traverse(expr.left_expr.*, visitor);
-            traverseArray(expr.args, visitor);
+            traverseArray(expr.arguments, visitor);
         },
-        .reference, .literal_expr, .arg => {},
+        .reference, .literal_expr, .parameter => {},
     }
 }

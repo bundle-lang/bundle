@@ -197,7 +197,7 @@ pub const Parser = struct {
 
     fn parseCallExpr(self: *Parser, left_expr: *ast.NodeKind) ParseError!ast.NodeKind {
         try self.expectAndSkip(.open_paren);
-        var args = ast.NodeArray.init(self.allocator);
+        var arguments = ast.NodeArray.init(self.allocator);
 
         while (!self.lexer.peekTokenIs(.close_paren)) {
             const arg_expr = try self.parseExpr();
@@ -206,12 +206,12 @@ pub const Parser = struct {
                 try self.expectAndSkip(.comma);
             }
 
-            args.append(arg_expr.*) catch |err| return self.propagateUnrecoverableError(err);
+            arguments.append(arg_expr.*) catch |err| return self.propagateUnrecoverableError(err);
         }
 
         try self.expectAndSkip(.close_paren);
 
-        return ast.NodeKind{ .call_expr = .{ .left_expr = left_expr, .args = args } };
+        return ast.NodeKind{ .call_expr = .{ .left_expr = left_expr, .arguments = arguments } };
     }
 
     fn parseFnDecl(self: *Parser) ParseError!ast.NodeKind {
@@ -220,18 +220,18 @@ pub const Parser = struct {
         const name = try self.readIdentifier();
 
         try self.expectAndSkip(.open_paren);
-        var args = ast.NodeArray.init(self.allocator);
+        var parameters = ast.NodeArray.init(self.allocator);
 
         while (!self.lexer.peekTokenIs(.close_paren)) {
-            const arg_name = try self.readIdentifier();
-            const arg_type = try self.readType();
+            const parameter_name = try self.readIdentifier();
+            const parameter_type = try self.readType();
 
             if (!self.lexer.peekTokenIs(.close_paren)) {
                 try self.expectAndSkip(.comma);
             }
 
-            const arg = ast.NodeKind{ .arg = .{ .name = arg_name, .arg_type = arg_type } };
-            args.append(arg) catch |err| return self.propagateUnrecoverableError(err);
+            const parameter = ast.NodeKind{ .parameter = .{ .name = parameter_name, .parameter_type = parameter_type } };
+            parameters.append(parameter) catch |err| return self.propagateUnrecoverableError(err);
         }
 
         try self.expectAndSkip(.close_paren);
@@ -240,7 +240,7 @@ pub const Parser = struct {
         const body = try self.parseBody();
         try self.expectNewLine();
 
-        return ast.NodeKind{ .fn_decl = .{ .name = name, .args = args, .fn_type = fn_type, .body = body } };
+        return ast.NodeKind{ .fn_decl = .{ .name = name, .parameters = parameters, .fn_type = fn_type, .body = body } };
     }
 
     fn parseLetStmt(self: *Parser) ParseError!ast.NodeKind {
