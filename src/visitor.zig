@@ -158,7 +158,7 @@ pub fn new(impl: anytype) Visitor {
 
 pub fn traverseArray(array: ast.NodeArray, visitor: Visitor) void {
     for (array.items) |node| {
-        traverse(node, visitor);
+        traverse(&node, visitor);
     }
 }
 
@@ -167,10 +167,10 @@ pub fn traverseBlock(block: ast.NodeBlockStmt, visitor: Visitor) void {
     visitor.exitBlockStmt(block);
 }
 
-pub fn traverse(node: ast.NodeKind, visitor: Visitor) void {
-    visitor.dispatch(node);
+pub fn traverse(node: *const ast.NodeKind, visitor: Visitor) void {
+    visitor.dispatch(node.*);
 
-    switch (node) {
+    switch (node.*) {
         .block_stmt => |block| {
             visitor.enterBlockStmt(block);
             traverseBlock(block, visitor);
@@ -183,15 +183,15 @@ pub fn traverse(node: ast.NodeKind, visitor: Visitor) void {
             visitor.exitFnDecl(decl);
         },
         .let_stmt => |stmt| {
-            traverse(stmt.value.*, visitor);
+            traverse(stmt.value, visitor);
         },
         .assign_stmt => |stmt| {
-            traverse(stmt.left_expr.*, visitor);
-            traverse(stmt.value.*, visitor);
+            traverse(stmt.left_expr, visitor);
+            traverse(stmt.value, visitor);
         },
         .if_stmt => |stmt| {
             visitor.enterBlockStmt(stmt.if_body);
-            traverse(stmt.if_condition.*, visitor);
+            traverse(stmt.if_condition, visitor);
             traverseBlock(stmt.if_body, visitor);
 
             if (stmt.elif_nodes) |nodes| traverseArray(nodes, visitor);
@@ -203,24 +203,24 @@ pub fn traverse(node: ast.NodeKind, visitor: Visitor) void {
         },
         .elif_stmt => |stmt| {
             visitor.enterBlockStmt(stmt.elif_body);
-            traverse(stmt.elif_condition.*, visitor);
+            traverse(stmt.elif_condition, visitor);
             traverseBlock(stmt.elif_body, visitor);
         },
         .return_stmt => |stmt| {
-            traverse(stmt.value.*, visitor);
+            traverse(stmt.value, visitor);
         },
         .grouping_expr => |expr| {
-            traverse(expr.expr.*, visitor);
+            traverse(expr.expr, visitor);
         },
         .unary_expr => |expr| {
-            traverse(expr.expr.*, visitor);
+            traverse(expr.expr, visitor);
         },
         .binary_expr => |expr| {
-            traverse(expr.left.*, visitor);
-            traverse(expr.right.*, visitor);
+            traverse(expr.left, visitor);
+            traverse(expr.right, visitor);
         },
         .call_expr => |expr| {
-            traverse(expr.left_expr.*, visitor);
+            traverse(expr.left_expr, visitor);
             traverseArray(expr.arguments, visitor);
         },
         .reference, .literal_expr, .parameter => {},
