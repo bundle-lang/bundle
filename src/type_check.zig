@@ -102,6 +102,11 @@ const TypeChecker = struct {
 
         const signature = left_expr_type.signature;
 
+        if (node.arguments.items.len != signature.parameter_types.items.len) {
+            log.err("{} parameters were expected, but {} were supplied", .{ signature.parameter_types.items.len, node.arguments.items.len });
+            return;
+        }
+
         for (node.arguments.items) |argument, i| {
             const argument_type = self.inferType(&argument);
             const parameter_type = signature.parameter_types.items[i];
