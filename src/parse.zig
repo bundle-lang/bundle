@@ -222,6 +222,8 @@ pub const Parser = struct {
         try self.expectAndSkip(.open_paren);
         var parameters = ast.NodeArray.init(self.allocator);
 
+        var parameter_types = ast.TypeArray.init(self.allocator);
+
         while (!self.lexer.peekTokenIs(.close_paren)) {
             const parameter_name = try self.readIdentifier();
             const parameter_type = try self.readType();
@@ -232,10 +234,15 @@ pub const Parser = struct {
 
             const parameter = ast.NodeKind{ .parameter = .{ .name = parameter_name, .parameter_type = parameter_type } };
             parameters.append(parameter) catch |err| return self.propagateUnrecoverableError(err);
+
+            parameter_types.append(parameter_type) catch |err| return self.propagateUnrecoverableError(err);
         }
 
         try self.expectAndSkip(.close_paren);
-        const fn_type = try self.readType();
+
+        const return_type = self.allocator.create(ast.Type) catch |err| return self.propagateUnrecoverableError(err);
+        return_type.* = try self.readType();
+        const fn_type = ast.Type{ .signature = .{ .parameter_types = parameter_types, .return_type = return_type } };
 
         const body = try self.parseBody();
         try self.expectNewLine();

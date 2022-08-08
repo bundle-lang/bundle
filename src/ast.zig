@@ -2,6 +2,7 @@ const std = @import("std");
 const meta = std.meta;
 
 pub const NodeArray = std.ArrayList(NodeKind);
+pub const TypeArray = std.ArrayList(Type);
 pub const NodeId = u32;
 
 pub const NodeKind = union(enum) {
@@ -22,8 +23,13 @@ pub const NodeKind = union(enum) {
 };
 
 pub const Type = union(enum) {
-    type_i32: void,
-    type_bool: void,
+    type_error,
+    type_i32,
+    type_bool,
+    signature: struct {
+        parameter_types: TypeArray,
+        return_type: *Type,
+    },
 
     pub fn matches(self: Type, other: Type) bool {
         return meta.activeTag(self) == meta.activeTag(other);

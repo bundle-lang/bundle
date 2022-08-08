@@ -8,10 +8,10 @@ const name_resolve = @import("name_resolve.zig");
 const TypeChecker = struct {
     nodes: ast.NodeArray,
     decl_table: name_resolve.DeclTable,
-    current_function_type: ?ast.Type,
+    current_return_type: ?ast.Type,
     found_return_stmt: bool,
 
-    fn inferType(self: *TypeChecker, node: *ast.NodeKind) ast.Type {
+    fn inferType(self: *TypeChecker, node: *const ast.NodeKind) ast.Type {
         return switch (node.*) {
             .reference => |ref| switch (self.decl_table.get(ref.id).?) {
                 .fn_decl => |decl| decl.fn_type,
@@ -21,18 +21,21 @@ const TypeChecker = struct {
             },
             .grouping_expr => |expr| self.inferType(expr.expr),
             .literal_expr => |expr| switch (expr) {
-                .integer => ast.Type.type_i32,
-                .boolean => ast.Type.type_bool,
+                .integer => ast.Type{ .type_i32 = {} },
+                .boolean => ast.Type{ .type_bool = {} },
             },
             .unary_expr => |expr| self.inferType(expr.expr),
             .binary_expr => |expr| self.inferType(expr.left),
-            .call_expr => |expr| self.inferType(expr.left_expr),
+            .call_expr => |expr| switch (self.inferType(expr.left_expr)) {
+                .signature => |sign| sign.return_type.*,
+                else => ast.Type{ .type_error = {} },
+            },
             else => unreachable,
         };
     }
 
     pub fn visitFnDecl(self: *TypeChecker, node: ast.NodeFnDecl) void {
-        self.current_function_type = node.fn_type;
+        self.current_return_type = node.fn_type.signature.return_type.*;
     }
 
     pub fn visitLetStmt(self: *TypeChecker, node: ast.NodeLetStmt) void {
@@ -71,10 +74,10 @@ const TypeChecker = struct {
 
     pub fn visitReturnStmt(self: *TypeChecker, node: ast.NodeReturnStmt) void {
         const return_stmt_type = self.inferType(node.value);
-        const function_type = self.current_function_type.?;
+        const return_type = self.current_return_type.?;
 
-        if (!return_stmt_type.matches(function_type)) {
-            log.err("function `{}` and return `{}` types mismatch", .{ function_type, return_stmt_type });
+        if (!return_stmt_type.matches(return_type)) {
+            log.err("function `{}` and return `{}` types mismatch", .{ return_type, return_stmt_type });
         }
 
         self.found_return_stmt = true;
@@ -89,12 +92,32 @@ const TypeChecker = struct {
         }
     }
 
+    pub fn visitCallExpr(self: *TypeChecker, node: ast.NodeCallExpr) void {
+        const left_expr_type = self.inferType(node.left_expr);
+
+        if (left_expr_type != .signature) {
+            log.err("{} is not a callable expression", .{left_expr_type});
+            return;
+        }
+
+        const signature = left_expr_type.signature;
+
+        for (node.arguments.items) |argument, i| {
+            const argument_type = self.inferType(&argument);
+            const parameter_type = signature.parameter_types.items[i];
+
+            if (!argument_type.matches(parameter_type)) {
+                log.err("argument `{}` and parameter `{}` types mismatch", .{ argument_type, parameter_type });
+            }
+        }
+    }
+
     pub fn exitFnDecl(self: *TypeChecker, _: ast.NodeFnDecl) void {
-        if (self.current_function_type != null and !self.found_return_stmt) {
+        if (self.current_return_type != null and !self.found_return_stmt) {
             log.err("missing return statement", .{});
         }
 
-        self.current_function_type = null;
+        self.current_return_type = null;
         self.found_return_stmt = false;
     }
 
@@ -108,7 +131,7 @@ pub fn new(nodes: ast.NodeArray, decl_table: name_resolve.DeclTable) TypeChecker
     return TypeChecker{
         .nodes = nodes,
         .decl_table = decl_table,
-        .current_function_type = null,
+        .current_return_type = null,
         .found_return_stmt = false,
     };
 }
