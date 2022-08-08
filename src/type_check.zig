@@ -39,7 +39,7 @@ const TypeChecker = struct {
         const let_type = node.let_type;
         const value_type = self.inferType(node.value);
 
-        if (let_type != value_type) {
+        if (!let_type.matches(value_type)) {
             log.err("declaration `{}` and value `{}` types mismatch", .{ let_type, value_type });
         }
     }
@@ -48,7 +48,7 @@ const TypeChecker = struct {
         const left_expr_type = self.inferType(node.left_expr);
         const value_type = self.inferType(node.value);
 
-        if (left_expr_type != value_type) {
+        if (!left_expr_type.matches(value_type)) {
             log.err("assignee `{}` and value `{}` types mismatch", .{ left_expr_type, value_type });
         }
     }
@@ -56,7 +56,7 @@ const TypeChecker = struct {
     pub fn visitIfStmt(self: *TypeChecker, node: ast.NodeIfStmt) void {
         const if_condition_type = self.inferType(node.if_condition);
 
-        if (if_condition_type != .type_bool) {
+        if (!if_condition_type.matches(.type_bool)) {
             log.err("condition evaluates to `{}`, but a boolean expression was expected", .{if_condition_type});
         }
     }
@@ -64,7 +64,7 @@ const TypeChecker = struct {
     pub fn visitElifStmt(self: *TypeChecker, node: ast.NodeElifStmt) void {
         const elif_condition_type = self.inferType(node.elif_condition);
 
-        if (elif_condition_type != .type_bool) {
+        if (!elif_condition_type.matches(.type_bool)) {
             log.err("condition evaluates to `{}`, but a boolean expression was expected", .{elif_condition_type});
         }
     }
@@ -73,7 +73,7 @@ const TypeChecker = struct {
         const return_stmt_type = self.inferType(node.value);
         const function_type = self.current_function_type.?;
 
-        if (return_stmt_type != function_type) {
+        if (!return_stmt_type.matches(function_type)) {
             log.err("function `{}` and return `{}` types mismatch", .{ function_type, return_stmt_type });
         }
 
@@ -84,7 +84,7 @@ const TypeChecker = struct {
         const left_type = self.inferType(node.left);
         const right_type = self.inferType(node.right);
 
-        if (left_type != right_type) {
+        if (!left_type.matches(right_type)) {
             log.err("left expression `{}` and right expression `{}` types mismatch", .{ left_type, right_type });
         }
     }
