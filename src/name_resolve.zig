@@ -1,4 +1,5 @@
 const std = @import("std");
+const log = std.log;
 
 const ast = @import("ast.zig");
 const visitor = @import("visitor.zig");
@@ -49,7 +50,7 @@ const LocalNameDecl = struct {
         } else if (self.global_scope.findDecl(node.name)) |decl| {
             self.decl_table.put(node.id, decl) catch unreachable;
         } else {
-            std.log.err("undefined reference to `{s}`", .{node.name});
+            log.err("undefined reference to `{s}`", .{node.name});
         }
     }
 

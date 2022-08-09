@@ -1,4 +1,6 @@
 const std = @import("std");
+const log = std.log;
+
 const ast = @import("ast.zig");
 
 const Allocator = std.mem.Allocator;
@@ -13,7 +15,7 @@ pub const Scope = struct {
 
     pub fn declare(self: *Scope, name: []const u8, definition: ast.NodeKind) void {
         if (self.findDecl(name) != null) {
-            std.log.err("redeclaration of `{s}`", .{name});
+            log.err("redeclaration of `{s}`", .{name});
         }
 
         self.declarations.put(name, definition) catch unreachable;
