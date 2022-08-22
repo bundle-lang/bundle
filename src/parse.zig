@@ -253,6 +253,7 @@ pub const Parser = struct {
     fn parseLetStmt(self: *Parser) ParseError!ast.NodeKind {
         try self.expectAndSkip(.keyword_let);
 
+        const id = self.nextNodeId();
         const name = try self.readIdentifier();
 
         const let_type = try self.readType();
@@ -262,7 +263,7 @@ pub const Parser = struct {
 
         try self.expectNewLine();
 
-        return ast.NodeKind{ .let_stmt = .{ .name = name, .let_type = let_type, .value = value } };
+        return ast.NodeKind{ .let_stmt = .{ .id = id, .name = name, .let_type = let_type, .value = value } };
     }
 
     fn parseAssignStmt(self: *Parser, left_expr: *ast.NodeKind) ParseError!ast.NodeKind {

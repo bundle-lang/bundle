@@ -7,6 +7,7 @@ const lex = @import("lex.zig");
 const parse = @import("parse.zig");
 const name_resolve = @import("name_resolve.zig");
 const type_check = @import("type_check.zig");
+const lowering = @import("lowering.zig");
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 var arena = std.heap.ArenaAllocator.init(gpa.allocator());
@@ -34,7 +35,9 @@ pub fn main() !void {
         };
 
         const decl_table = name_resolve.new(allocator, parser.nodes).build(); // TODO: proper error reporting.
-        type_check.new(parser.nodes, decl_table).check();
+        type_check.new(parser.nodes, decl_table).check(); // TODO: proper error reporting.
+
+        lowering.new(allocator, parser.nodes, decl_table).lower();
     } else {
         log.err("specify a file name", .{});
     }

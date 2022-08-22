@@ -55,6 +55,7 @@ pub const NodeFnDecl = struct {
 };
 
 pub const NodeLetStmt = struct {
+    id: NodeId,
     name: []const u8,
     let_type: Type,
     value: *NodeKind,
