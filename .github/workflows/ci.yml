@@ -8,7 +8,7 @@ jobs:
       - uses: goto-bus-stop/setup-zig@v1
         with:
           version: 0.9.1
-      - run: wget -qO - https://apt.llvm.org/llvm.sh | bash -s 14
+      - run: sudo wget -qO - https://apt.llvm.org/llvm.sh | bash -s 14
       - run: zig build test
   lint:
     runs-on: ubuntu-latest
