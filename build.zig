@@ -14,6 +14,10 @@ pub fn build(b: *std.build.Builder) void {
     const exe = b.addExecutable("bundle", "src/main.zig");
     exe.setTarget(target);
     exe.setBuildMode(mode);
+
+    exe.linkLibC();
+    exe.addIncludeDir("/usr/include");
+    exe.linkSystemLibrary("LLVM-14");
     exe.install();
 
     const run_cmd = exe.run();
