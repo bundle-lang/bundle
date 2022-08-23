@@ -42,7 +42,9 @@ const LoweringContext = struct {
                     return llvm.LLVMBuildLoad(self.builder, llvm_reference, "tmp.load");
                 } else return llvm_reference;
             },
+            .grouping_expr => |expr| self.lowerExpr(expr.expr, load),
             .literal_expr => |expr| self.lowerLiteralExpr(expr),
+            .unary_expr => |expr| self.lowerUnaryExpr(expr),
             .binary_expr => |expr| self.lowerBinaryExpr(expr),
             else => unreachable,
         };
@@ -58,6 +60,16 @@ const LoweringContext = struct {
     fn lowerLiteralExpr(self: *LoweringContext, node: ast.NodeLiteralExpr) llvm.LLVMValueRef {
         return switch (node) {
             .integer => |integer| llvm.LLVMConstInt(self.lowerType(.type_i32), integer, @boolToInt(false)),
+            else => unreachable,
+        };
+    }
+
+    fn lowerUnaryExpr(self: *LoweringContext, node: ast.NodeUnaryExpr) llvm.LLVMValueRef {
+        const llvm_expr = self.lowerExpr(node.expr, true);
+
+        return switch (node.operator) {
+            .plus => llvm_expr,
+            .minus => llvm.LLVMBuildNeg(self.builder, llvm_expr, "tmp.neg"),
             else => unreachable,
         };
     }
