@@ -30,6 +30,7 @@ const LoweringContext = struct {
     fn lowerType(self: *LoweringContext, node_type: ast.Type) llvm.LLVMTypeRef {
         return switch (node_type) {
             .type_i32 => llvm.LLVMInt32TypeInContext(self.context),
+            .type_bool => llvm.LLVMInt1TypeInContext(self.context),
             else => unreachable,
         };
     }
@@ -50,6 +51,87 @@ const LoweringContext = struct {
         };
     }
 
+    fn lowerFnDecl(self: *LoweringContext, node: ast.NodeFnDecl) void {
+        var llvm_param_types = TypeRefArray.init(self.allocator);
+        for (node.parameters.items) |param| {
+            llvm_param_types.append(self.lowerType(param.parameter.parameter_type)) catch unreachable;
+        }
+
+        const llvm_function = llvm.LLVMAddFunction(self.module, self.lowerString(node.name), llvm.LLVMFunctionType(
+            self.lowerType(node.fn_type.signature.return_type.*),
+            llvm_param_types.items.ptr,
+            @intCast(c_uint, llvm_param_types.items.len),
+            @boolToInt(false),
+        ));
+
+        const llvm_function_block = llvm.LLVMAppendBasicBlockInContext(self.context, llvm_function, "fn.entry");
+        llvm.LLVMPositionBuilderAtEnd(self.builder, llvm_function_block);
+
+        self.dispatchArray(node.body.list);
+    }
+
+    fn lowerLetStmt(self: *LoweringContext, node: ast.NodeLetStmt) void {
+        const llvm_let_alloca = llvm.LLVMBuildAlloca(self.builder, self.lowerType(node.let_type), self.lowerString(node.name));
+        const llvm_let_value = self.lowerExpr(node.value, true);
+
+        _ = llvm.LLVMBuildStore(self.builder, llvm_let_value, llvm_let_alloca);
+
+        self.value_ref_table.put(node.id, llvm_let_alloca) catch unreachable;
+    }
+
+    fn lowerAssignStmt(self: *LoweringContext, node: ast.NodeAssignStmt) void {
+        _ = llvm.LLVMBuildStore(self.builder, self.lowerExpr(node.value, true), self.lowerExpr(node.left_expr, false));
+    }
+
+    fn lowerIfStmt(self: *LoweringContext, node: ast.NodeIfStmt) void {
+        const llvm_current_function = llvm.LLVMGetBasicBlockParent(llvm.LLVMGetInsertBlock(self.builder));
+
+        const llvm_if_condition = self.lowerExpr(node.if_condition, true);
+        const llvm_if_then_block = llvm.LLVMAppendBasicBlockInContext(self.context, llvm_current_function, "if.then");
+        var llvm_else_block = llvm.LLVMCreateBasicBlockInContext(self.context, "if.else");
+        const llvm_merge_block = llvm.LLVMCreateBasicBlockInContext(self.context, "if.merge");
+
+        _ = llvm.LLVMBuildCondBr(self.builder, llvm_if_condition, llvm_if_then_block, llvm_else_block);
+
+        llvm.LLVMPositionBuilderAtEnd(self.builder, llvm_if_then_block);
+        self.dispatchArray(node.if_body.list);
+
+        _ = llvm.LLVMBuildBr(self.builder, llvm_merge_block);
+
+        if (node.elif_nodes) |elif_nodes| {
+            for (elif_nodes.items) |elif_node| {
+                llvm.LLVMAppendExistingBasicBlock(llvm_current_function, llvm_else_block);
+                llvm.LLVMPositionBuilderAtEnd(self.builder, llvm_else_block);
+
+                const llvm_elif_condition = self.lowerExpr(elif_node.elif_stmt.elif_condition, true);
+                const llvm_elif_then_block = llvm.LLVMAppendBasicBlockInContext(self.context, llvm_current_function, "elif.then");
+                llvm_else_block = llvm.LLVMCreateBasicBlockInContext(self.context, "elif.else");
+
+                _ = llvm.LLVMBuildCondBr(self.builder, llvm_elif_condition, llvm_elif_then_block, llvm_else_block);
+
+                llvm.LLVMPositionBuilderAtEnd(self.builder, llvm_elif_then_block);
+                self.dispatchArray(elif_node.elif_stmt.elif_body.list);
+
+                _ = llvm.LLVMBuildBr(self.builder, llvm_merge_block);
+            }
+        }
+
+        llvm.LLVMAppendExistingBasicBlock(llvm_current_function, llvm_else_block);
+        llvm.LLVMPositionBuilderAtEnd(self.builder, llvm_else_block);
+        if (node.else_body) |else_body| {
+            self.dispatchArray(else_body.list);
+        }
+
+        _ = llvm.LLVMBuildBr(self.builder, llvm_merge_block);
+
+        llvm.LLVMAppendExistingBasicBlock(llvm_current_function, llvm_merge_block);
+        llvm.LLVMPositionBuilderAtEnd(self.builder, llvm_merge_block);
+    }
+
+    fn lowerReturnStmt(self: *LoweringContext, node: ast.NodeReturnStmt) void {
+        _ = llvm.LLVMBuildRet(self.builder, self.lowerExpr(node.value, true));
+    }
+
     fn lowerReference(self: *LoweringContext, node: ast.NodeReference) llvm.LLVMValueRef {
         return switch (self.decl_table.get(node.id).?) {
             .let_stmt => |stmt| self.value_ref_table.get(stmt.id).?,
@@ -60,7 +142,7 @@ const LoweringContext = struct {
     fn lowerLiteralExpr(self: *LoweringContext, node: ast.NodeLiteralExpr) llvm.LLVMValueRef {
         return switch (node) {
             .integer => |integer| llvm.LLVMConstInt(self.lowerType(.type_i32), integer, @boolToInt(false)),
-            else => unreachable,
+            .boolean => |boolean| llvm.LLVMConstInt(self.lowerType(.type_bool), @boolToInt(boolean), @boolToInt(false)),
         };
     }
 
@@ -86,38 +168,21 @@ const LoweringContext = struct {
         };
     }
 
-    pub fn visitFnDecl(self: *LoweringContext, node: ast.NodeFnDecl) void {
-        var llvm_param_types = TypeRefArray.init(self.allocator);
-        for (node.parameters.items) |param| {
-            llvm_param_types.append(self.lowerType(param.parameter.parameter_type)) catch unreachable;
+    fn dispatchArray(self: *LoweringContext, nodes: ast.NodeArray) void {
+        for (nodes.items) |node| {
+            self.dispatch(node);
         }
-
-        const llvm_function = llvm.LLVMAddFunction(self.module, self.lowerString(node.name), llvm.LLVMFunctionType(
-            self.lowerType(node.fn_type.signature.return_type.*),
-            llvm_param_types.items.ptr,
-            @intCast(c_uint, llvm_param_types.items.len),
-            @boolToInt(false),
-        ));
-
-        const llvm_function_block = llvm.LLVMAppendBasicBlockInContext(self.context, llvm_function, "fn.entry");
-        llvm.LLVMPositionBuilderAtEnd(self.builder, llvm_function_block);
     }
 
-    pub fn visitLetStmt(self: *LoweringContext, node: ast.NodeLetStmt) void {
-        const llvm_let_alloca = llvm.LLVMBuildAlloca(self.builder, self.lowerType(node.let_type), self.lowerString(node.name));
-        const llvm_let_value = self.lowerExpr(node.value, true);
-
-        _ = llvm.LLVMBuildStore(self.builder, llvm_let_value, llvm_let_alloca);
-
-        self.value_ref_table.put(node.id, llvm_let_alloca) catch unreachable;
-    }
-
-    pub fn visitAssignStmt(self: *LoweringContext, node: ast.NodeAssignStmt) void {
-        _ = llvm.LLVMBuildStore(self.builder, self.lowerExpr(node.value, true), self.lowerExpr(node.left_expr, false));
-    }
-
-    pub fn visitReturnStmt(self: *LoweringContext, node: ast.NodeReturnStmt) void {
-        _ = llvm.LLVMBuildRet(self.builder, self.lowerExpr(node.value, true));
+    fn dispatch(self: *LoweringContext, node: ast.NodeKind) void {
+        switch (node) {
+            .fn_decl => |decl| self.lowerFnDecl(decl),
+            .let_stmt => |stmt| self.lowerLetStmt(stmt),
+            .assign_stmt => |stmt| self.lowerAssignStmt(stmt),
+            .if_stmt => |stmt| self.lowerIfStmt(stmt),
+            .return_stmt => |stmt| self.lowerReturnStmt(stmt),
+            else => unreachable,
+        }
     }
 
     pub fn lower(self: *LoweringContext) void {
@@ -125,8 +190,7 @@ const LoweringContext = struct {
         defer llvm.LLVMDisposeModule(self.module);
         defer llvm.LLVMDisposeBuilder(self.builder);
 
-        const lowering_context_visitor = visitor.new(self);
-        visitor.traverseArray(self.nodes, lowering_context_visitor);
+        self.dispatchArray(self.nodes);
 
         llvm.LLVMDumpModule(self.module);
     }
