@@ -225,6 +225,8 @@ pub const Parser = struct {
         var parameter_types = ast.TypeArray.init(self.allocator);
 
         while (!self.lexer.peekTokenIs(.close_paren)) {
+            const id = self.nextNodeId();
+
             const parameter_name = try self.readIdentifier();
             const parameter_type = try self.readType();
 
@@ -232,7 +234,7 @@ pub const Parser = struct {
                 try self.expectAndSkip(.comma);
             }
 
-            const parameter = ast.NodeKind{ .parameter = .{ .name = parameter_name, .parameter_type = parameter_type } };
+            const parameter = ast.NodeKind{ .parameter = .{ .id = id, .name = parameter_name, .parameter_type = parameter_type } };
             parameters.append(parameter) catch |err| return self.propagateUnrecoverableError(err);
 
             parameter_types.append(parameter_type) catch |err| return self.propagateUnrecoverableError(err);

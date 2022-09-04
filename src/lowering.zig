@@ -11,6 +11,7 @@ const visitor = @import("visitor.zig");
 const Allocator = std.mem.Allocator;
 const ValueRefTable = std.AutoHashMap(ast.NodeId, llvm.LLVMValueRef);
 const TypeRefArray = std.ArrayList(llvm.LLVMTypeRef);
+const ValueRefArray = std.ArrayList(llvm.LLVMValueRef);
 
 const LoweringContext = struct {
     allocator: Allocator,
@@ -47,6 +48,7 @@ const LoweringContext = struct {
             .literal_expr => |expr| self.lowerLiteralExpr(expr),
             .unary_expr => |expr| self.lowerUnaryExpr(expr),
             .binary_expr => |expr| self.lowerBinaryExpr(expr),
+            .call_expr => |expr| self.lowerCallExpr(expr),
             else => unreachable,
         };
     }
@@ -66,6 +68,17 @@ const LoweringContext = struct {
 
         const llvm_function_block = llvm.LLVMAppendBasicBlockInContext(self.context, llvm_function, "fn.entry");
         llvm.LLVMPositionBuilderAtEnd(self.builder, llvm_function_block);
+
+        for (node.parameters.items) |param, i| {
+            const llvm_param_alloca = llvm.LLVMBuildAlloca(
+                self.builder,
+                self.lowerType(param.parameter.parameter_type),
+                self.lowerString(param.parameter.name),
+            );
+            _ = llvm.LLVMBuildStore(self.builder, llvm.LLVMGetParam(llvm_function, @intCast(c_uint, i)), llvm_param_alloca);
+
+            self.value_ref_table.put(param.parameter.id, llvm_param_alloca) catch unreachable;
+        }
 
         self.dispatchArray(node.body.list);
     }
@@ -135,6 +148,7 @@ const LoweringContext = struct {
     fn lowerReference(self: *LoweringContext, node: ast.NodeReference) llvm.LLVMValueRef {
         return switch (self.decl_table.get(node.id).?) {
             .let_stmt => |stmt| self.value_ref_table.get(stmt.id).?,
+            .parameter => |param| self.value_ref_table.get(param.id).?,
             else => unreachable,
         };
     }
@@ -166,6 +180,24 @@ const LoweringContext = struct {
             .star => llvm.LLVMBuildMul(self.builder, llvm_left_expr, llvm_right_expr, "tmp.mul"),
             else => unreachable,
         };
+    }
+
+    fn lowerCallExpr(self: *LoweringContext, node: ast.NodeCallExpr) llvm.LLVMValueRef {
+        const callee_name = node.left_expr.reference.name;
+        const llvm_callee = llvm.LLVMGetNamedFunction(self.module, self.lowerString(callee_name));
+
+        var llvm_arg_values = ValueRefArray.init(self.allocator);
+        for (node.arguments.items) |arg| {
+            llvm_arg_values.append(self.lowerExpr(&arg, true)) catch unreachable;
+        }
+
+        return llvm.LLVMBuildCall(
+            self.builder,
+            llvm_callee,
+            llvm_arg_values.items.ptr,
+            @intCast(c_uint, llvm_arg_values.items.len),
+            "tmp.call",
+        );
     }
 
     fn dispatchArray(self: *LoweringContext, nodes: ast.NodeArray) void {

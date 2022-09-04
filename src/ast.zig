@@ -83,6 +83,7 @@ pub const NodeReturnStmt = struct {
 };
 
 pub const NodeParameter = struct {
+    id: NodeId,
     name: []const u8,
     parameter_type: Type,
 };
