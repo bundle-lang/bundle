@@ -8,6 +8,7 @@ pub const NodeId = u32;
 pub const NodeKind = union(enum) {
     block_stmt: NodeBlockStmt,
     fn_decl: NodeFnDecl,
+    extern_decl: NodeExternDecl,
     let_stmt: NodeLetStmt,
     assign_stmt: NodeAssignStmt,
     if_stmt: NodeIfStmt,
@@ -26,6 +27,7 @@ pub const Type = union(enum) {
     type_error,
     type_i32,
     type_bool,
+    type_string,
     signature: struct {
         parameter_types: TypeArray,
         return_type: *Type,
@@ -52,6 +54,11 @@ pub const NodeFnDecl = struct {
     parameters: NodeArray,
     fn_type: Type,
     body: NodeBlockStmt,
+};
+
+pub const NodeExternDecl = struct {
+    name: []const u8,
+    extern_type: Type,
 };
 
 pub const NodeLetStmt = struct {
@@ -100,6 +107,7 @@ pub const NodeGroupingExpr = struct {
 pub const NodeLiteralExpr = union(enum) {
     integer: u32,
     boolean: bool,
+    string: []const u8,
 };
 
 pub const NodeUnaryExpr = struct {

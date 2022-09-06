@@ -67,6 +67,28 @@ pub const Parser = struct {
         return switch (next.kind) {
             .type_i32 => .type_i32,
             .type_bool => .type_bool,
+            .type_string => .type_string,
+            .keyword_fn => signature: {
+                try self.expectAndSkip(.open_paren);
+                var parameter_types = ast.TypeArray.init(self.allocator);
+
+                while (!self.lexer.peekTokenIs(.close_paren)) {
+                    const parameter_type = try self.readType();
+
+                    if (!self.lexer.peekTokenIs(.close_paren)) {
+                        try self.expectAndSkip(.comma);
+                    }
+
+                    parameter_types.append(parameter_type) catch |err| return self.propagateUnrecoverableError(err);
+                }
+
+                try self.expectAndSkip(.close_paren);
+
+                const return_type = self.allocator.create(ast.Type) catch |err| return self.propagateUnrecoverableError(err);
+                return_type.* = try self.readType();
+
+                break :signature ast.Type{ .signature = .{ .parameter_types = parameter_types, .return_type = return_type } };
+            },
             else => self.propagateCustomError("Type", next),
         };
     }
@@ -112,6 +134,7 @@ pub const Parser = struct {
             .literal_integer => ast.NodeLiteralExpr{ .integer = fmt.parseUnsigned(u32, next.literal, 0) catch unreachable },
             .literal_true => ast.NodeLiteralExpr{ .boolean = true },
             .literal_false => ast.NodeLiteralExpr{ .boolean = false },
+            .literal_string => ast.NodeLiteralExpr{ .string = next.literal[1 .. next.literal.len - 1] },
             else => return self.propagateCustomError("Literal", next),
         };
 
@@ -252,6 +275,17 @@ pub const Parser = struct {
         return ast.NodeKind{ .fn_decl = .{ .name = name, .parameters = parameters, .fn_type = fn_type, .body = body } };
     }
 
+    fn parseExternDecl(self: *Parser) ParseError!ast.NodeKind {
+        try self.expectAndSkip(.keyword_extern);
+
+        const name = try self.readIdentifier();
+        const extern_type = try self.readType();
+
+        try self.expectNewLine();
+
+        return ast.NodeKind{ .extern_decl = .{ .name = name, .extern_type = extern_type } };
+    }
+
     fn parseLetStmt(self: *Parser) ParseError!ast.NodeKind {
         try self.expectAndSkip(.keyword_let);
 
@@ -353,6 +387,7 @@ pub const Parser = struct {
         const next = self.lexer.peekToken();
         return switch (next.kind) {
             .keyword_fn => self.parseFnDecl(),
+            .keyword_extern => self.parseExternDecl(),
             .eof => ParseError.Eof,
             else => err: {
                 defer _ = self.lexer.nextToken();

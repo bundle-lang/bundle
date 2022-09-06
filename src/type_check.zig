@@ -15,6 +15,7 @@ const TypeChecker = struct {
         return switch (node.*) {
             .reference => |ref| switch (self.decl_table.get(ref.id).?) {
                 .fn_decl => |decl| decl.fn_type,
+                .extern_decl => |decl| decl.extern_type,
                 .let_stmt => |stmt| stmt.let_type,
                 .parameter => |param| param.parameter_type,
                 else => unreachable,
@@ -23,6 +24,7 @@ const TypeChecker = struct {
             .literal_expr => |expr| switch (expr) {
                 .integer => ast.Type{ .type_i32 = {} },
                 .boolean => ast.Type{ .type_bool = {} },
+                .string => ast.Type{ .type_string = {} },
             },
             .unary_expr => |expr| self.inferType(expr.expr),
             .binary_expr => |expr| self.inferType(expr.left),

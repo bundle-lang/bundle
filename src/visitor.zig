@@ -4,6 +4,7 @@ const Visitor = struct {
     impl: *anyopaque,
 
     visitFnDeclImpl: ?fn (*anyopaque, ast.NodeFnDecl) void,
+    visitExternDeclImpl: ?fn (*anyopaque, ast.NodeExternDecl) void,
     visitLetStmtImpl: ?fn (*anyopaque, ast.NodeLetStmt) void,
     visitAssignStmtImpl: ?fn (*anyopaque, ast.NodeAssignStmt) void,
     visitIfStmtImpl: ?fn (*anyopaque, ast.NodeIfStmt) void,
@@ -23,6 +24,10 @@ const Visitor = struct {
 
     inline fn visitFnDecl(self: Visitor, node: ast.NodeFnDecl) void {
         if (self.visitFnDeclImpl) |visitImpl| visitImpl(self.impl, node);
+    }
+
+    inline fn visitExternDecl(self: Visitor, node: ast.NodeExternDecl) void {
+        if (self.visitExternDeclImpl) |visitImpl| visitImpl(self.impl, node);
     }
 
     inline fn visitLetStmt(self: Visitor, node: ast.NodeLetStmt) void {
@@ -88,6 +93,7 @@ const Visitor = struct {
     fn dispatch(self: Visitor, node: ast.NodeKind) void {
         return switch (node) {
             .fn_decl => |decl| self.visitFnDecl(decl),
+            .extern_decl => |decl| self.visitExternDecl(decl),
             .let_stmt => |stmt| self.visitLetStmt(stmt),
             .assign_stmt => |stmt| self.visitAssignStmt(stmt),
             .if_stmt => |stmt| self.visitIfStmt(stmt),
@@ -137,6 +143,7 @@ pub fn new(impl: anytype) Visitor {
         .impl = impl,
 
         .visitFnDeclImpl = newVisitImpl(impl_type, ast.NodeFnDecl, "visitFnDecl"),
+        .visitExternDeclImpl = newVisitImpl(impl_type, ast.NodeExternDecl, "visitExternDecl"),
         .visitLetStmtImpl = newVisitImpl(impl_type, ast.NodeLetStmt, "visitLetStmt"),
         .visitAssignStmtImpl = newVisitImpl(impl_type, ast.NodeAssignStmt, "visitAssignStmt"),
         .visitIfStmtImpl = newVisitImpl(impl_type, ast.NodeIfStmt, "visitIfStmt"),
@@ -223,6 +230,6 @@ pub fn traverse(node: *const ast.NodeKind, visitor: Visitor) void {
             traverse(expr.left_expr, visitor);
             traverseArray(expr.arguments, visitor);
         },
-        .reference, .literal_expr, .parameter => {},
+        .reference, .literal_expr, .parameter, .extern_decl => {},
     }
 }

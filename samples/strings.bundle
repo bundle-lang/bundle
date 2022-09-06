@@ -1,0 +1,6 @@
+extern puts fn(string) i32
+
+fn main() i32 {
+    let s string = "hello world"
+    return puts(s) - 12
+}

@@ -32,6 +32,7 @@ const LoweringContext = struct {
         return switch (node_type) {
             .type_i32 => llvm.LLVMInt32TypeInContext(self.context),
             .type_bool => llvm.LLVMInt1TypeInContext(self.context),
+            .type_string => llvm.LLVMPointerType(llvm.LLVMInt8TypeInContext(self.context), @intCast(c_uint, 0)),
             else => unreachable,
         };
     }
@@ -81,6 +82,25 @@ const LoweringContext = struct {
         }
 
         self.dispatchArray(node.body.list);
+    }
+
+    fn lowerExternDecl(self: *LoweringContext, node: ast.NodeExternDecl) void {
+        switch (node.extern_type) {
+            .signature => |sign| {
+                var llvm_param_types = TypeRefArray.init(self.allocator);
+                for (sign.parameter_types.items) |param_type| {
+                    llvm_param_types.append(self.lowerType(param_type)) catch unreachable;
+                }
+
+                _ = llvm.LLVMAddFunction(self.module, self.lowerString(node.name), llvm.LLVMFunctionType(
+                    self.lowerType(sign.return_type.*),
+                    llvm_param_types.items.ptr,
+                    @intCast(c_uint, llvm_param_types.items.len),
+                    @boolToInt(false),
+                ));
+            },
+            else => unreachable,
+        }
     }
 
     fn lowerLetStmt(self: *LoweringContext, node: ast.NodeLetStmt) void {
@@ -157,6 +177,7 @@ const LoweringContext = struct {
         return switch (node) {
             .integer => |integer| llvm.LLVMConstInt(self.lowerType(.type_i32), integer, @boolToInt(false)),
             .boolean => |boolean| llvm.LLVMConstInt(self.lowerType(.type_bool), @boolToInt(boolean), @boolToInt(false)),
+            .string => |string| llvm.LLVMBuildGlobalStringPtr(self.builder, self.lowerString(string), "glb.string"),
         };
     }
 
@@ -209,6 +230,7 @@ const LoweringContext = struct {
     fn dispatch(self: *LoweringContext, node: ast.NodeKind) void {
         switch (node) {
             .fn_decl => |decl| self.lowerFnDecl(decl),
+            .extern_decl => |decl| self.lowerExternDecl(decl),
             .let_stmt => |stmt| self.lowerLetStmt(stmt),
             .assign_stmt => |stmt| self.lowerAssignStmt(stmt),
             .if_stmt => |stmt| self.lowerIfStmt(stmt),

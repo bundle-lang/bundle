@@ -16,6 +16,7 @@ pub const Token = struct {
         // keywords
         identifier,
         keyword_fn,
+        keyword_extern,
         keyword_return,
         keyword_if,
         keyword_elif,
@@ -26,10 +27,15 @@ pub const Token = struct {
         literal_integer,
         literal_true,
         literal_false,
+        literal_string,
+
+        // error literals
+        invalid_string,
 
         // types
         type_i32,
         type_bool,
+        type_string,
 
         // operators
         equal,
@@ -55,6 +61,7 @@ pub const Token = struct {
 
                 .identifier => "Identifier",
                 .keyword_fn => "fn",
+                .keyword_extern => "extern",
                 .keyword_return => "return",
                 .keyword_if => "if",
                 .keyword_elif => "elif",
@@ -64,9 +71,13 @@ pub const Token = struct {
                 .literal_integer => "Integer",
                 .literal_true => "true",
                 .literal_false => "false",
+                .literal_string => "String",
+
+                .invalid_string => "Invalid String",
 
                 .type_i32 => "i32",
                 .type_bool => "bool",
+                .type_string => "string",
 
                 .equal => "=",
                 .plus => "+",
@@ -87,6 +98,7 @@ pub const Token = struct {
 
     const keywords = std.ComptimeStringMap(Kind, .{
         .{ "fn", .keyword_fn },
+        .{ "extern", .keyword_extern },
         .{ "return", .keyword_return },
         .{ "if", .keyword_if },
         .{ "elif", .keyword_elif },
@@ -98,6 +110,7 @@ pub const Token = struct {
 
         .{ "i32", .type_i32 },
         .{ "bool", .type_bool },
+        .{ "string", .type_string },
     });
 
     fn keyword(literal: []const u8) ?Kind {
@@ -150,6 +163,19 @@ pub const Lexer = struct {
             var start = self.pos;
 
             switch (self.curChar()) {
+                '"' => {
+                    self.nextChar();
+                    while (self.pos < self.src.len and self.curChar() != '"') {
+                        self.nextChar();
+                    }
+
+                    if (self.pos < self.src.len) {
+                        self.nextChar();
+                        token.kind = .literal_string;
+                    } else {
+                        token.kind = .invalid_string;
+                    }
+                },
                 'a'...'z', 'A'...'Z', '_' => {
                     while (self.pos < self.src.len and (ascii.isAlNum(self.curChar()) or self.curChar() == '_')) {
                         self.nextChar();

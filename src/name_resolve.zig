@@ -16,6 +16,10 @@ const GlobalNameDecl = struct {
         self.global_scope.declare(node.name, .{ .fn_decl = node });
     }
 
+    pub fn visitExternDecl(self: *GlobalNameDecl, node: ast.NodeExternDecl) void {
+        self.global_scope.declare(node.name, .{ .extern_decl = node });
+    }
+
     fn run(self: *GlobalNameDecl) void {
         const global_name_decl_visitor = visitor.new(self);
         visitor.traverseArray(self.nodes, global_name_decl_visitor);
